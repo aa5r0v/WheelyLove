@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-ink: #0a0a0a;
+  --brand-paper: #ffffff;
+  --brand-paper-dim: #fffbea;
+  --brand-accent: #ffd400;
+  --brand-accent-bright: #fff04d;
+  --brand-accent-deep: #e0a800;
+  --brand-accent-soft: #fff3b0;
+  --brand-accent-ink: #0a0a0a;
+  --brand-line: #232323;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: var(--brand-ink);
+  --color-paper: var(--brand-paper);
+  --color-paper-dim: var(--brand-paper-dim);
+  --color-accent: var(--brand-accent);
+  --color-accent-bright: var(--brand-accent-bright);
+  --color-accent-deep: var(--brand-accent-deep);
+  --color-accent-soft: var(--brand-accent-soft);
+  --color-accent-ink: var(--brand-accent-ink);
+  --color-line: var(--brand-line);
+  --font-display: var(--font-oswald);
+  --font-sans: var(--font-inter);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.placeholder-media {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-ink),
+    var(--color-ink) 12px,
+    #1a1a1a 12px,
+    #1a1a1a 24px
+  );
+  position: relative;
+}
+
+.placeholder-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 25%, transparent) 0%,
+    transparent 60%
+  );
+}
+
+.placeholder-media-light {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-accent-soft),
+    var(--color-accent-soft) 12px,
+    #ffec8a 12px,
+    #ffec8a 24px
+  );
 }

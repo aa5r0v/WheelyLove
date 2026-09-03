@@ -1,69 +1,84 @@
-import Image from "next/image";
+import Link from "next/link";
+import { getDb } from "@/db";
+import { sports } from "@/db/schema";
 
-export default function Home() {
+export default async function HomePage() {
+  const db = getDb();
+  const allSports = await db.select().from(sports);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div>
+      <section className="relative flex min-h-[70vh] items-end overflow-hidden border-b-2 border-accent bg-ink text-paper">
+        <div className="placeholder-media absolute inset-0 opacity-40" />
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-24 sm:px-6">
+          <p className="inline-block bg-accent px-2 py-1 text-xs font-semibold tracking-[0.3em] text-accent-ink">
+            МЯСТО ЗА HERO СНИМКА
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <h1 className="font-display mt-4 text-5xl leading-[0.95] sm:text-7xl">
+            На колелото не ни
+            <br />
+            задържат <span className="text-accent">рекордите</span>
+          </h1>
+          <p className="mt-6 max-w-md text-paper/70">
+            Резервирай спининг, пилатес или steel training тренировка — избери
+            час, инструктор и плати онлайн или на място.
+          </p>
+          <Link
+            href="#classes"
+            className="font-display mt-8 inline-block bg-accent px-8 py-3 text-sm tracking-wide text-accent-ink transition hover:bg-accent-bright"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Резервирай сега
+          </Link>
         </div>
-      </main>
+      </section>
+
+      <section id="classes" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className="h-8 w-1.5 bg-accent" />
+          <h2 className="font-display text-3xl">Тренировки</h2>
+        </div>
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          {allSports.map((sport) => (
+            <Link
+              key={sport.id}
+              href={`/sports/${sport.slug}`}
+              className="group block border-2 border-transparent bg-ink text-paper transition hover:border-accent"
+            >
+              <div className="placeholder-media relative aspect-[4/3] w-full overflow-hidden">
+                <span className="absolute bottom-2 right-2 bg-ink/70 px-2 py-1 text-[10px] tracking-widest text-paper/60">
+                  СНИМКА
+                </span>
+              </div>
+              <div className="p-5">
+                <span className="inline-block h-1 w-10 bg-accent" />
+                <h3 className="font-display mt-3 text-2xl">{sport.name}</h3>
+                <p className="mt-1 text-sm text-paper/60">
+                  {sport.description}
+                </p>
+                <span className="font-display mt-4 inline-block text-sm text-accent group-hover:underline">
+                  Виж часовете →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y-2 border-accent bg-paper-dim px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="font-display text-3xl">Инструктори</h2>
+          <p className="mt-2 max-w-lg text-ink/60">
+            Всеки треньор има собствена визитка с био и контакти — виж я на
+            страницата на всяка тренировка.
+          </p>
+          <Link
+            href="/gallery"
+            className="font-display mt-6 inline-block border-2 border-ink bg-accent px-6 py-2.5 text-sm tracking-wide text-accent-ink transition hover:bg-ink hover:text-paper"
+          >
+            Разгледай галерията
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
