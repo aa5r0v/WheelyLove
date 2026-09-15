@@ -1,6 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getDb } from "@/db";
 import { sports } from "@/db/schema";
+
+const sportImages: Record<string, string> = {
+  spinning: "/spinning-studio.jpg",
+};
 
 export default async function HomePage() {
   const db = getDb();
@@ -9,17 +14,20 @@ export default async function HomePage() {
   return (
     <div>
       <section className="relative flex min-h-[70vh] items-end overflow-hidden border-b-2 border-accent bg-ink text-paper">
-        <div className="placeholder-media absolute inset-0 opacity-40" />
+        <Image
+          src="/hero-studio.png"
+          alt="WheelyLove studio"
+          fill
+          priority
+          className="object-cover opacity-70"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
         <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-24 sm:px-6">
-          <p className="inline-block bg-accent px-2 py-1 text-xs font-semibold tracking-[0.3em] text-accent-ink">
-            МЯСТО ЗА HERO СНИМКА
-          </p>
-          <h1 className="font-display mt-4 text-5xl leading-[0.95] sm:text-7xl">
-            На колелото не ни
-            <br />
-            задържат <span className="text-accent">рекордите</span>
+          <h1 className="font-display mt-4 text-4xl leading-[0.95] sm:text-6xl">
+            На колелото не ни задържат рекордите, а усещането за{" "}
+            <span className="text-accent">щастие!</span>
           </h1>
-          <p className="mt-6 max-w-md text-paper/70">
+          <p className="mt-6 max-w-md text-paper/80">
             Резервирай спининг, пилатес или steel training тренировка — избери
             час, инструктор и плати онлайн или на място.
           </p>
@@ -45,9 +53,18 @@ export default async function HomePage() {
               className="group block border-2 border-transparent bg-ink text-paper transition hover:border-accent"
             >
               <div className="placeholder-media relative aspect-[4/3] w-full overflow-hidden">
-                <span className="absolute bottom-2 right-2 bg-ink/70 px-2 py-1 text-[10px] tracking-widest text-paper/60">
-                  СНИМКА
-                </span>
+                {sportImages[sport.slug] ? (
+                  <Image
+                    src={sportImages[sport.slug]}
+                    alt={sport.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="absolute bottom-2 right-2 bg-ink/70 px-2 py-1 text-[10px] tracking-widest text-paper/60">
+                    СНИМКА
+                  </span>
+                )}
               </div>
               <div className="p-5">
                 <span className="inline-block h-1 w-10 bg-accent" />

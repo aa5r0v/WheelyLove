@@ -24,6 +24,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Невалидна заявка." }, { status: 400 });
   }
 
+  if (paymentMethod === "card") {
+    return NextResponse.json(
+      { error: "Плащането с карта все още не е налично." },
+      { status: 400 }
+    );
+  }
+
   const db = getDb();
   const [session] = await db
     .select({

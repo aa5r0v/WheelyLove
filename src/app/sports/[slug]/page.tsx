@@ -1,10 +1,15 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { and, asc, eq, gte, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { classSessions, instructors, sports } from "@/db/schema";
 import { formatDateLong, formatTime } from "@/lib/format";
 import BookButton from "./book-button";
+
+const sportImages: Record<string, string> = {
+  spinning: "/spinning-studio.jpg",
+};
 
 export default async function SportPage({
   params,
@@ -50,7 +55,20 @@ export default async function SportPage({
   return (
     <div>
       <section className="relative overflow-hidden border-b-2 border-accent bg-ink text-paper">
-        <div className="placeholder-media absolute inset-0 opacity-40" />
+        {sportImages[sport.slug] ? (
+          <>
+            <Image
+              src={sportImages[sport.slug]}
+              alt={sport.name}
+              fill
+              priority
+              className="object-cover opacity-70"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
+          </>
+        ) : (
+          <div className="placeholder-media absolute inset-0 opacity-40" />
+        )}
         <div className="relative z-10 mx-auto max-w-4xl px-4 py-16 sm:px-6">
           <span
             className="inline-block h-1.5 w-14"
@@ -79,7 +97,7 @@ export default async function SportPage({
                   return (
                     <div
                       key={session.id}
-                      className="flex items-center justify-between border-l-4 border-accent bg-paper-dim p-5"
+                      className="flex flex-col gap-4 border-l-4 border-accent bg-paper-dim p-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
                         <p className="font-display text-lg">

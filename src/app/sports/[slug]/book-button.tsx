@@ -29,6 +29,10 @@ export default function BookButton({
       setError("Моля, въведи телефонен номер за потвърждение.");
       return;
     }
+    if (paymentMethod === "card") {
+      setError("Плащането с карта все още не е налично. Моля, избери плащане на място.");
+      return;
+    }
     setError(null);
     setLoading(paymentMethod);
     try {
@@ -85,6 +89,9 @@ export default function BookButton({
         >
           {loading === "card" ? "Зареждане…" : "Плати с карта"}
         </button>
+        <p className="text-center text-[11px] text-ink/40">
+          Плащането с карта временно не е налично
+        </p>
         <button
           onClick={() => submit("cash")}
           disabled={loading !== null}

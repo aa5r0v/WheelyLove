@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Oswald, Inter } from "next/font/google";
-import { ClerkProvider, Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import Link from "next/link";
+import Image from "next/image";
 import RegisterServiceWorker from "./register-sw";
+import HeaderNav from "./header-nav";
 import "./globals.css";
 
 const oswald = Oswald({
@@ -31,41 +33,36 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       >
         <body className="flex min-h-full flex-col bg-paper text-ink">
           <header className="sticky top-0 z-40 border-b-2 border-accent bg-ink text-paper">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-              <Link
-                href="/"
-                className="font-display flex items-center gap-2 text-2xl tracking-wide text-paper"
-              >
-                <span className="h-2.5 w-2.5 rounded-full bg-accent" />
-                WheelyLove
+            <div className="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/logo.png"
+                  alt="WheelyLove"
+                  width={44}
+                  height={44}
+                  className="h-9 w-9 object-contain sm:h-11 sm:w-11"
+                  priority
+                />
+                <span className="font-display text-xl tracking-wide text-paper sm:text-2xl">
+                  WheelyLove
+                </span>
               </Link>
-              <nav className="flex items-center gap-5 text-sm font-medium">
-                <Link href="/gallery" className="hidden hover:text-accent sm:inline">
-                  Галерия
-                </Link>
-                <Link href="/my-bookings" className="hover:text-accent">
-                  Моите резервации
-                </Link>
-                <Show when="signed-in">
-                  <Link href="/admin" className="hover:text-accent">
-                    Админ
-                  </Link>
-                  <UserButton />
-                </Show>
-                <Show when="signed-out">
-                  <SignInButton mode="modal">
-                    <button className="rounded-none bg-accent px-4 py-2 font-display text-sm tracking-wide text-accent-ink">
-                      Вход
-                    </button>
-                  </SignInButton>
-                </Show>
-              </nav>
+              <HeaderNav />
             </div>
           </header>
           <main className="flex-1">{children}</main>
           <footer className="border-t-2 border-accent bg-ink px-4 py-10 text-paper sm:px-6">
             <div className="mx-auto max-w-6xl">
-              <p className="font-display text-xl tracking-wide">WheelyLove</p>
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/logo.png"
+                  alt="WheelyLove"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
+                <p className="font-display text-xl tracking-wide">WheelyLove</p>
+              </div>
               <p className="mt-2 text-sm text-paper/60">
                 <a href="mailto:wheelylove@abv.bg" className="hover:text-accent">
                   wheelylove@abv.bg
@@ -74,6 +71,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <a href="tel:+359886573880" className="hover:text-accent">
                   +359 886 573 880
                 </a>
+              </p>
+              <p className="mt-4 text-sm text-paper/60">
+                <Link href="/terms" className="hover:text-accent">
+                  Общи условия
+                </Link>{" "}
+                ·{" "}
+                <Link href="/privacy" className="hover:text-accent">
+                  Политика за поверителност
+                </Link>
               </p>
             </div>
           </footer>

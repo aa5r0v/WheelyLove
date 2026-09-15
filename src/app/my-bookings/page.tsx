@@ -58,7 +58,7 @@ export default async function MyBookingsPage() {
           return (
             <div
               key={b.id}
-              className="flex items-center justify-between border-l-4 border-accent bg-paper-dim p-5"
+              className="flex flex-col gap-3 border-l-4 border-accent bg-paper-dim p-5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="font-display text-lg">{b.sportName}</p>
@@ -66,7 +66,7 @@ export default async function MyBookingsPage() {
                   {b.startTime.toLocaleString("bg-BG")}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="font-display">
                   {(b.priceCents / 100).toFixed(2)} €
                 </p>

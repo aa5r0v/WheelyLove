@@ -3,12 +3,14 @@
 :root {
   --brand-ink: #0a0a0a;
   --brand-paper: #ffffff;
-  --brand-paper-dim: #fffbea;
-  --brand-accent: #ffd400;
-  --brand-accent-bright: #fff04d;
-  --brand-accent-deep: #e0a800;
-  --brand-accent-soft: #fff3b0;
-  --brand-accent-ink: #0a0a0a;
+  --brand-paper-dim: #f2f9f1;
+  --brand-accent: #3fa34d;
+  --brand-accent-bright: #5cc768;
+  --brand-accent-deep: #2b7a37;
+  --brand-accent-soft: #dff2df;
+  --brand-accent-ink: #ffffff;
+  --brand-yellow: #f5c400;
+  --brand-yellow-ink: #0a0a0a;
   --brand-line: #232323;
 }
 
@@ -21,6 +23,8 @@
   --color-accent-deep: var(--brand-accent-deep);
   --color-accent-soft: var(--brand-accent-soft);
   --color-accent-ink: var(--brand-accent-ink);
+  --color-yellow: var(--brand-yellow);
+  --color-yellow-ink: var(--brand-yellow-ink);
   --color-line: var(--brand-line);
   --font-display: var(--font-oswald);
   --font-sans: var(--font-inter);
@@ -55,17 +59,7 @@ body {
   inset: 0;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--color-accent) 25%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 30%, transparent) 0%,
     transparent 60%
-  );
-}
-
-.placeholder-media-light {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--color-accent-soft),
-    var(--color-accent-soft) 12px,
-    #ffec8a 12px,
-    #ffec8a 24px
   );
 }
