@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { classSessions, instructors, sports } from "@/db/schema";
 import { formatDateLong, formatTime } from "@/lib/format";
 import BookButton from "./book-button";
+import { Reveal, StaggerGrid } from "@/app/reveal";
 
 const sportImages: Record<string, string> = {
   spinning: "/spinning-studio.jpg",
@@ -69,7 +70,7 @@ export default async function SportPage({
         ) : (
           <div className="placeholder-media absolute inset-0 opacity-40" />
         )}
-        <div className="relative z-10 mx-auto max-w-4xl px-4 py-16 sm:px-6">
+        <Reveal className="relative z-10 mx-auto max-w-4xl px-4 py-16 sm:px-6">
           <span
             className="inline-block h-1.5 w-14"
             style={{ backgroundColor: sport.color }}
@@ -78,7 +79,7 @@ export default async function SportPage({
             {sport.name}
           </h1>
           <p className="mt-4 max-w-lg text-paper/70">{sport.description}</p>
-        </div>
+        </Reveal>
       </section>
 
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
@@ -91,13 +92,13 @@ export default async function SportPage({
           {[...grouped.entries()].map(([date, sessionsOnDate]) => (
             <div key={date}>
               <h2 className="font-display mb-4 text-xl capitalize">{date}</h2>
-              <div className="space-y-3">
+              <StaggerGrid className="space-y-3">
                 {sessionsOnDate.map((session) => {
                   const spotsLeft = session.capacity - session.bookedCount;
                   return (
                     <div
                       key={session.id}
-                      className="flex flex-col gap-4 border-l-4 border-accent bg-paper-dim p-5 sm:flex-row sm:items-center sm:justify-between"
+                      className="card-lift flex flex-col gap-4 border-l-4 border-accent bg-paper-dim p-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
                         <p className="font-display text-lg">
@@ -131,7 +132,7 @@ export default async function SportPage({
                     </div>
                   );
                 })}
-              </div>
+              </StaggerGrid>
             </div>
           ))}
         </div>

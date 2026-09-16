@@ -12,6 +12,10 @@
   --brand-yellow: #f5c400;
   --brand-yellow-ink: #0a0a0a;
   --brand-line: #232323;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @theme inline {
@@ -62,4 +66,193 @@ body {
     color-mix(in srgb, var(--color-accent) 30%, transparent) 0%,
     transparent 60%
   );
+}
+
+/* --- Focus --- */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* --- Press feedback (buttons, CTAs) --- */
+
+.press {
+  transition: transform 160ms var(--ease-out);
+}
+
+.press:active {
+  transform: scale(0.97);
+}
+
+/* --- Hover lift (cards, gallery tiles) --- */
+
+.card-lift {
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px -16px
+      color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+}
+
+/* --- Scroll reveal (marketing sections, fires once) --- */
+
+.reveal {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 600ms var(--ease-in-out);
+}
+
+.reveal[data-visible="true"] {
+  clip-path: inset(0 0 0% 0);
+}
+
+/* --- Stagger a grid's entrance --- */
+
+.stagger > * {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.stagger[data-visible="true"] > * {
+  animation: stagger-in 400ms var(--ease-out) forwards;
+}
+
+.stagger[data-visible="true"] > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.stagger[data-visible="true"] > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.stagger[data-visible="true"] > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.stagger[data-visible="true"] > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.stagger[data-visible="true"] > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+@keyframes stagger-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Mobile nav disclosure --- */
+
+.mobile-menu {
+  transform-origin: top;
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+.mobile-menu[data-open="true"] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+/* --- Pop-in panel (anchored reveal, e.g. booking form) --- */
+
+.pop-in {
+  transform-origin: top;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* --- Lightbox (modal) --- */
+
+.lightbox-backdrop {
+  opacity: 1;
+  transition: opacity 250ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.lightbox-backdrop[data-open="false"] {
+  opacity: 0;
+}
+
+.lightbox-content {
+  transform-origin: center;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 250ms var(--ease-out),
+    transform 250ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.lightbox-content[data-open="false"] {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+.lightbox-media {
+  opacity: 1;
+  transition: opacity 200ms ease;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+/* No JS to flip data-visible: don't hide content behind it */
+@media (scripting: none) {
+  .reveal {
+    clip-path: none !important;
+  }
+  .stagger > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    clip-path: none !important;
+  }
+  .stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .card-lift:hover {
+    transform: none;
+  }
+  .mobile-menu,
+  .pop-in,
+  .lightbox-content,
+  .lightbox-media {
+    transform: none !important;
+  }
+  .press:active {
+    transform: none;
+  }
 }

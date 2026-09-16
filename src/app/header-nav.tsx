@@ -24,7 +24,7 @@ export default function HeaderNav() {
         </Show>
         <Show when="signed-out">
           <SignInButton mode="modal">
-            <button className="rounded-none bg-accent px-4 py-2 font-display text-sm tracking-wide text-accent-ink">
+            <button className="press rounded-none bg-accent px-4 py-2 font-display text-sm tracking-wide text-accent-ink">
               Вход
             </button>
           </SignInButton>
@@ -37,7 +37,7 @@ export default function HeaderNav() {
         </Show>
         <Show when="signed-out">
           <SignInButton mode="modal">
-            <button className="font-display bg-accent px-3 py-1.5 text-sm tracking-wide text-accent-ink">
+            <button className="press font-display bg-accent px-3 py-1.5 text-sm tracking-wide text-accent-ink">
               Вход
             </button>
           </SignInButton>
@@ -45,37 +45,40 @@ export default function HeaderNav() {
         <button
           onClick={() => setOpen((v) => !v)}
           aria-label="Меню"
+          aria-expanded={open}
           className="flex h-9 w-9 flex-col items-center justify-center gap-1.5"
         >
           <span
-            className={`h-0.5 w-6 bg-paper transition ${open ? "translate-y-2 rotate-45" : ""}`}
+            className={`h-0.5 w-6 bg-paper transition-transform duration-150 ease-out ${open ? "translate-y-2 rotate-45" : ""}`}
           />
           <span
-            className={`h-0.5 w-6 bg-paper transition ${open ? "opacity-0" : ""}`}
+            className={`h-0.5 w-6 bg-paper transition-opacity duration-150 ease-out ${open ? "opacity-0" : ""}`}
           />
           <span
-            className={`h-0.5 w-6 bg-paper transition ${open ? "-translate-y-2 -rotate-45" : ""}`}
+            className={`h-0.5 w-6 bg-paper transition-transform duration-150 ease-out ${open ? "-translate-y-2 -rotate-45" : ""}`}
           />
         </button>
       </div>
 
-      {open && (
-        <div className="absolute left-0 right-0 top-full border-b-2 border-accent bg-ink px-4 py-4 text-sm font-medium sm:hidden">
-          <div className="flex flex-col gap-4">
-            <Link href="/gallery" onClick={() => setOpen(false)}>
-              Галерия
+      <div
+        data-open={open}
+        inert={!open}
+        className="mobile-menu absolute left-0 right-0 top-full border-b-2 border-accent bg-ink px-4 py-4 text-sm font-medium sm:hidden"
+      >
+        <div className="flex flex-col gap-4">
+          <Link href="/gallery" onClick={() => setOpen(false)}>
+            Галерия
+          </Link>
+          <Link href="/my-bookings" onClick={() => setOpen(false)}>
+            Моите резервации
+          </Link>
+          <Show when="signed-in">
+            <Link href="/admin" onClick={() => setOpen(false)}>
+              Админ
             </Link>
-            <Link href="/my-bookings" onClick={() => setOpen(false)}>
-              Моите резервации
-            </Link>
-            <Show when="signed-in">
-              <Link href="/admin" onClick={() => setOpen(false)}>
-                Админ
-              </Link>
-            </Show>
-          </div>
+          </Show>
         </div>
-      )}
+      </div>
     </>
   );
 }
