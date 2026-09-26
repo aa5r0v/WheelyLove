@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
+import { formatDateTimeShort } from "@/lib/format";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelOwnBooking } from "./actions";
 
@@ -63,7 +64,7 @@ export default async function MyBookingsPage() {
               <div>
                 <p className="font-display text-lg">{b.sportName}</p>
                 <p className="text-sm text-ink/60">
-                  {b.startTime.toLocaleString("bg-BG")}
+                  {formatDateTimeShort(b.startTime)}
                 </p>
               </div>
               <div className="sm:text-right">

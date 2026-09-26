@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
+import { formatDateTimeShort } from "@/lib/format";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelBooking, confirmCashBooking } from "../actions";
 
@@ -57,7 +58,7 @@ export default async function AdminBookingsPage() {
                 <td className="px-4 py-2">{b.userPhone}</td>
                 <td className="px-4 py-2">{b.sportName}</td>
                 <td className="px-4 py-2">
-                  {b.startTime.toLocaleString("bg-BG")}
+                  {formatDateTimeShort(b.startTime)}
                 </td>
                 <td className="px-4 py-2">
                   {(b.priceCents / 100).toFixed(2)} €

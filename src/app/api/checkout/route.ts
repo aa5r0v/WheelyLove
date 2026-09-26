@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
+import { formatDateTimeShort } from "@/lib/format";
 import {
   bookings,
   classSessions,
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
             currency: "eur",
             unit_amount: session.priceCents,
             product_data: {
-              name: `${session.sportName} — ${session.startTime.toLocaleString("bg-BG")}`,
+              name: `${session.sportName} — ${formatDateTimeShort(session.startTime)}`,
             },
           },
           quantity: 1,

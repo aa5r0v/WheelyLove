@@ -10,12 +10,26 @@ function getResend() {
 
 const FROM = `WheelyLove <reservations@${process.env.RESEND_EMAIL_DOMAIN}>`;
 
+// reservations@ has no mailbox — route customer replies to the studio's inbox.
+const STUDIO_EMAIL = "wheelylove@abv.bg";
+const STUDIO_PHONE = "+359 886 573 880";
+
+const CONTACT_FOOTER = `
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0 12px;" />
+  <p style="font-family: sans-serif; font-size: 13px; color: #666;">
+    Въпроси? Отговори на този имейл или се обади на
+    <a href="tel:${STUDIO_PHONE.replace(/\s/g, "")}">${STUDIO_PHONE}</a>.<br />
+    WheelyLove · ${STUDIO_EMAIL}
+  </p>
+`;
+
 async function sendEmail(params: { to: string; subject: string; html: string }) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
+    replyTo: STUDIO_EMAIL,
     to: [params.to],
     subject: params.subject,
-    html: params.html,
+    html: params.html + CONTACT_FOOTER,
   });
   if (error) {
     console.error("Failed to send email:", error);
@@ -60,7 +74,7 @@ export async function sendBookingReminderEmail(info: BookingEmailInfo) {
 
   await sendEmail({
     to: info.to,
-    subject: `Напомняне: ${info.sportName} утре в ${info.startTime.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" })}`,
+    subject: `Напомняне: ${info.sportName} — ${dateStr}`,
     html: `
       <div style="font-family: sans-serif; line-height: 1.5;">
         <h2>Напомняне за тренировка</h2>

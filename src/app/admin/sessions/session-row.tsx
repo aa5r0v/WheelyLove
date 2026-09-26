@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { updateSession, cancelSession } from "../actions";
+import {
+  formatDateTimeShort,
+  toSofiaDateInput,
+  toSofiaTimeInput,
+} from "@/lib/format";
 
 type Sport = { id: number; name: string };
 type Instructor = { id: number; name: string };
@@ -20,15 +25,6 @@ type Session = {
   instructorName: string;
 };
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
-function toDateInput(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-function toTimeInput(d: Date) {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export default function SessionRow({
   session,
@@ -62,7 +58,7 @@ export default function SessionRow({
           />
           <div>
             <p className="font-medium">
-              {session.sportName} · {session.startTime.toLocaleString("bg-BG")}
+              {session.sportName} · {formatDateTimeShort(session.startTime)}
             </p>
             <p className="text-sm text-neutral-500">
               {session.instructorName} · {session.bookedCount}/
@@ -136,19 +132,19 @@ export default function SessionRow({
       <input
         type="date"
         name="date"
-        defaultValue={toDateInput(session.startTime)}
+        defaultValue={toSofiaDateInput(session.startTime)}
         className="rounded-md border border-neutral-300 px-2 py-1.5 sm:col-span-2"
       />
       <input
         type="time"
         name="startTime"
-        defaultValue={toTimeInput(session.startTime)}
+        defaultValue={toSofiaTimeInput(session.startTime)}
         className="rounded-md border border-neutral-300 px-2 py-1.5"
       />
       <input
         type="time"
         name="endTime"
-        defaultValue={toTimeInput(session.endTime)}
+        defaultValue={toSofiaTimeInput(session.endTime)}
         className="rounded-md border border-neutral-300 px-2 py-1.5"
       />
       {error && <p className="text-sm text-red-600 sm:col-span-6">{error}</p>}

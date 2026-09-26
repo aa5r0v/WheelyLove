@@ -1,4 +1,5 @@
 import twilio from "twilio";
+import { formatDateTimeShort } from "./format";
 
 let _client: ReturnType<typeof twilio> | null = null;
 
@@ -43,12 +44,7 @@ type BookingSmsInfo = {
 };
 
 export async function sendBookingConfirmationSms(info: BookingSmsInfo) {
-  const dateStr = info.startTime.toLocaleString("bg-BG", {
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dateStr = formatDateTimeShort(info.startTime);
   await sendSms(
     info.to,
     `WheelyLove: резервацията ти за ${info.sportName} на ${dateStr} е потвърдена.`
@@ -56,12 +52,7 @@ export async function sendBookingConfirmationSms(info: BookingSmsInfo) {
 }
 
 export async function sendBookingReminderSms(info: BookingSmsInfo) {
-  const dateStr = info.startTime.toLocaleString("bg-BG", {
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dateStr = formatDateTimeShort(info.startTime);
   await sendSms(
     info.to,
     `WheelyLove: напомняне за ${info.sportName} на ${dateStr}. До скоро!`
@@ -69,12 +60,7 @@ export async function sendBookingReminderSms(info: BookingSmsInfo) {
 }
 
 export async function sendBookingCancelledSms(info: BookingSmsInfo) {
-  const dateStr = info.startTime.toLocaleString("bg-BG", {
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dateStr = formatDateTimeShort(info.startTime);
   await sendSms(
     info.to,
     `WheelyLove: резервацията ти за ${info.sportName} на ${dateStr} е отказана.`

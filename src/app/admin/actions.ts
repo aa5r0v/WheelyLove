@@ -16,6 +16,7 @@ import { sendBookingConfirmationSms } from "@/lib/sms";
 import { uploadToStorage, deleteFromStorage } from "@/lib/storage";
 import { cancelBookingAndNotify } from "@/lib/bookings";
 import { notifyWaitlist } from "@/lib/waitlist";
+import { fromSofiaDateTime } from "@/lib/format";
 
 async function assertAdmin() {
   if (!(await isAdmin())) {
@@ -37,15 +38,11 @@ export async function createSession(formData: FormData) {
   const repeatWeeks = Math.max(1, Number(formData.get("repeatWeeks") || 1));
 
   const rows = Array.from({ length: repeatWeeks }, (_, i) => {
-    const startTime = new Date(`${date}T${startTimeStr}:00`);
-    const endTime = new Date(`${date}T${endTimeStr}:00`);
-    startTime.setDate(startTime.getDate() + i * 7);
-    endTime.setDate(endTime.getDate() + i * 7);
     return {
       sportId,
       instructorId,
-      startTime,
-      endTime,
+      startTime: fromSofiaDateTime(date, startTimeStr, i * 7),
+      endTime: fromSofiaDateTime(date, endTimeStr, i * 7),
       capacity,
       priceCents: Math.round(priceEuro * 100),
     };
@@ -86,8 +83,8 @@ export async function updateSession(sessionId: number, formData: FormData) {
     .set({
       sportId,
       instructorId,
-      startTime: new Date(`${date}T${startTimeStr}:00`),
-      endTime: new Date(`${date}T${endTimeStr}:00`),
+      startTime: fromSofiaDateTime(date, startTimeStr),
+      endTime: fromSofiaDateTime(date, endTimeStr),
       capacity,
       priceCents: Math.round(priceEuro * 100),
     })
