@@ -73,6 +73,29 @@ export async function sendBookingReminderEmail(info: BookingEmailInfo) {
   });
 }
 
+export async function sendWaitlistSpotOpenEmail(info: {
+  to: string;
+  sportName: string;
+  startTime: Date;
+  bookUrl: string;
+}) {
+  const dateStr = formatDateTimeLong(info.startTime);
+
+  await sendEmail({
+    to: info.to,
+    subject: `Освободи се място: ${info.sportName} — ${dateStr}`,
+    html: `
+      <div style="font-family: sans-serif; line-height: 1.5;">
+        <h2>Освободи се място!</h2>
+        <p><strong>Тренировка:</strong> ${info.sportName}</p>
+        <p><strong>Дата и час:</strong> ${dateStr}</p>
+        <p>Мястото е за този, който се запише пръв — побързай.</p>
+        <p><a href="${info.bookUrl}">Запиши се сега</a></p>
+      </div>
+    `,
+  });
+}
+
 type BookingCancelledInfo = {
   to: string;
   sportName: string;

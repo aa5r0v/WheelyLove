@@ -15,6 +15,7 @@ import { sendBookingConfirmationEmail } from "@/lib/email";
 import { sendBookingConfirmationSms } from "@/lib/sms";
 import { uploadToStorage, deleteFromStorage } from "@/lib/storage";
 import { cancelBookingAndNotify } from "@/lib/bookings";
+import { notifyWaitlist } from "@/lib/waitlist";
 
 async function assertAdmin() {
   if (!(await isAdmin())) {
@@ -92,6 +93,12 @@ export async function updateSession(sessionId: number, formData: FormData) {
     })
     .where(eq(classSessions.id, sessionId));
 
+  try {
+    await notifyWaitlist(sessionId);
+  } catch (err) {
+    console.error("Failed to notify waitlist:", err);
+  }
+
   revalidatePath("/admin/sessions");
   revalidatePath("/");
 }
@@ -99,6 +106,12 @@ export async function updateSession(sessionId: number, formData: FormData) {
 export async function cancelSession(sessionId: number) {
   await assertAdmin();
   const db = getDb();
+
+  // Mark cancelled first so releasing each booking's spot doesn't email the waitlist.
+  await db
+    .update(classSessions)
+    .set({ cancelledAt: new Date() })
+    .where(eq(classSessions.id, sessionId));
 
   const activeBookings = await db
     .select({ id: bookings.id })
@@ -113,11 +126,6 @@ export async function cancelSession(sessionId: number) {
   for (const b of activeBookings) {
     await cancelBookingAndNotify(b.id);
   }
-
-  await db
-    .update(classSessions)
-    .set({ cancelledAt: new Date() })
-    .where(eq(classSessions.id, sessionId));
 
   revalidatePath("/admin/sessions");
   revalidatePath("/");

@@ -4,6 +4,7 @@ import { bookings, classSessions, sports } from "@/db/schema";
 import { refundPayment } from "./stripe";
 import { sendBookingCancelledEmail } from "./email";
 import { sendBookingCancelledSms } from "./sms";
+import { notifyWaitlist } from "./waitlist";
 
 export async function releaseSessionSpot(sessionId: number) {
   const db = getDb();
@@ -11,6 +12,12 @@ export async function releaseSessionSpot(sessionId: number) {
     .update(classSessions)
     .set({ bookedCount: sql`greatest(${classSessions.bookedCount} - 1, 0)` })
     .where(eq(classSessions.id, sessionId));
+
+  try {
+    await notifyWaitlist(sessionId);
+  } catch (err) {
+    console.error("Failed to notify waitlist:", err);
+  }
 }
 
 export async function cancelBookingAndNotify(bookingId: number) {

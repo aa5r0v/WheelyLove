@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { bookings, classSessions, instructors, sports } from "@/db/schema";
+import {
+  bookings,
+  classSessions,
+  instructors,
+  sports,
+  waitlistEntries,
+} from "@/db/schema";
 import { cancelBookingAndNotify } from "./bookings";
 
 describe("cancelBookingAndNotify", () => {
@@ -76,6 +82,39 @@ describe("cancelBookingAndNotify", () => {
       .from(classSessions)
       .where(eq(classSessions.id, sessionId));
     expect(updatedSession.bookedCount).toBe(0);
+  });
+
+  it("notifies the waitlist when a spot is released", async () => {
+    await db
+      .update(classSessions)
+      .set({ capacity: 1, bookedCount: 1 })
+      .where(eq(classSessions.id, sessionId));
+    const [waitingBooking] = await db
+      .insert(bookings)
+      .values({
+        sessionId,
+        userId: "test-user",
+        userEmail: "test@example.com",
+        userPhone: "+359000000000",
+        status: "pending",
+        paymentMethod: "cash",
+      })
+      .returning();
+    const [entry] = await db
+      .insert(waitlistEntries)
+      .values({ sessionId, userId: "test-waiter", userEmail: "waiter@example.com" })
+      .returning();
+
+    await cancelBookingAndNotify(waitingBooking.id);
+
+    const [updatedEntry] = await db
+      .select({ notifiedAt: waitlistEntries.notifiedAt })
+      .from(waitlistEntries)
+      .where(eq(waitlistEntries.id, entry.id));
+    expect(updatedEntry.notifiedAt).not.toBeNull();
+
+    await db.delete(waitlistEntries).where(eq(waitlistEntries.id, entry.id));
+    await db.delete(bookings).where(eq(bookings.id, waitingBooking.id));
   });
 
   it("is a no-op when called again on an already-cancelled booking", async () => {

@@ -16,11 +16,12 @@ export default async function HomePage() {
     <div>
       <section className="relative flex min-h-[70vh] items-end overflow-hidden border-b-2 border-accent bg-ink text-paper">
         <Image
-          src="/hero-studio.png"
-          alt="WheelyLove studio"
+          src="/hero-community.jpg"
+          alt="Групова спининг тренировка в WheelyLove"
           fill
           priority
-          className="object-cover opacity-70"
+          sizes="100vw"
+          className="object-cover object-[center_35%] opacity-70"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
         <Reveal className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-24 sm:px-6">

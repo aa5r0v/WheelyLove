@@ -1,11 +1,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { and, asc, eq, gte, isNull } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull } from "drizzle-orm";
+import { currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
-import { classSessions, instructors, sports } from "@/db/schema";
+import {
+  bookings,
+  classSessions,
+  instructors,
+  sports,
+  waitlistEntries,
+} from "@/db/schema";
 import { formatDateLong, formatTime } from "@/lib/format";
 import BookButton from "./book-button";
+import WaitlistButton from "./waitlist-button";
 import { Reveal, StaggerGrid } from "@/app/reveal";
 
 const sportImages: Record<string, string> = {
@@ -45,6 +53,41 @@ export default async function SportPage({
       )
     )
     .orderBy(asc(classSessions.startTime));
+
+  const user = await currentUser();
+  const sessionIds = upcoming.map((s) => s.id);
+  const waitlist = sessionIds.length
+    ? await db
+        .select({
+          sessionId: waitlistEntries.sessionId,
+          userId: waitlistEntries.userId,
+        })
+        .from(waitlistEntries)
+        .where(inArray(waitlistEntries.sessionId, sessionIds))
+        .orderBy(asc(waitlistEntries.createdAt), asc(waitlistEntries.id))
+    : [];
+  const myBookedSessionIds = new Set(
+    user && sessionIds.length
+      ? (
+          await db
+            .select({ sessionId: bookings.sessionId })
+            .from(bookings)
+            .where(
+              and(
+                eq(bookings.userId, user.id),
+                inArray(bookings.sessionId, sessionIds),
+                inArray(bookings.status, ["pending", "confirmed"])
+              )
+            )
+        ).map((b) => b.sessionId)
+      : []
+  );
+
+  function waitlistInfo(sessionId: number) {
+    const queue = waitlist.filter((w) => w.sessionId === sessionId);
+    const index = user ? queue.findIndex((w) => w.userId === user.id) : -1;
+    return { waitingCount: queue.length, position: index === -1 ? null : index + 1 };
+  }
 
   const grouped = new Map<string, typeof upcoming>();
   for (const session of upcoming) {
@@ -124,10 +167,16 @@ export default async function SportPage({
                         <span className="font-display bg-accent px-2 py-0.5 text-lg text-accent-ink">
                           {(session.priceCents / 100).toFixed(2)} €
                         </span>
-                        <BookButton
-                          sessionId={session.id}
-                          disabled={spotsLeft <= 0}
-                        />
+                        {myBookedSessionIds.has(session.id) ? (
+                          <p className="text-sm text-green-700">Записан си</p>
+                        ) : spotsLeft > 0 ? (
+                          <BookButton sessionId={session.id} disabled={false} />
+                        ) : (
+                          <WaitlistButton
+                            sessionId={session.id}
+                            {...waitlistInfo(session.id)}
+                          />
+                        )}
                       </div>
                     </div>
                   );

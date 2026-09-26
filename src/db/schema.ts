@@ -6,6 +6,7 @@ import {
   timestamp,
   varchar,
   pgEnum,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const bookingStatusEnum = pgEnum("booking_status", [
@@ -73,6 +74,21 @@ export const bookings = pgTable("bookings", {
   reminderSentAt: timestamp("reminder_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const waitlistEntries = pgTable(
+  "waitlist_entries",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => classSessions.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 128 }).notNull(),
+    userEmail: varchar("user_email", { length: 256 }).notNull(),
+    notifiedAt: timestamp("notified_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("waitlist_session_user_idx").on(t.sessionId, t.userId)]
+);
 
 export const galleryItems = pgTable("gallery_items", {
   id: serial("id").primaryKey(),

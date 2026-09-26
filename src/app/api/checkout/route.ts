@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { bookings, classSessions, instructors, sports } from "@/db/schema";
+import {
+  bookings,
+  classSessions,
+  instructors,
+  sports,
+  waitlistEntries,
+} from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { sendBookingConfirmationSms } from "@/lib/sms";
@@ -77,6 +83,12 @@ export async function POST(req: Request) {
       paymentMethod,
     })
     .returning();
+
+  await db
+    .delete(waitlistEntries)
+    .where(
+      and(eq(waitlistEntries.sessionId, session.id), eq(waitlistEntries.userId, user.id))
+    );
 
   if (paymentMethod === "cash") {
     await Promise.all([
