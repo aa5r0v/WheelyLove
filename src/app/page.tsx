@@ -83,6 +83,29 @@ export default async function HomePage() {
         </StaggerGrid>
       </section>
 
+      <section id="schedule" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+        <Reveal className="flex items-center gap-3">
+          <span className="h-8 w-1.5 bg-accent" />
+          <h2 className="font-display text-3xl">Седмичен график</h2>
+        </Reveal>
+        <Reveal className="mt-8">
+          {/* Plain link so phones can open the full-size image and zoom into the small text. */}
+          <a href="/weekly-schedule.jpg" target="_blank" rel="noopener" className="block">
+            <Image
+              src="/weekly-schedule.jpg"
+              alt="Седмичен график: понеделник спининг 18:15; вторник спининг 17:30 и 18:30; сряда Steel Training 18:30; четвъртък спининг 17:30 и 18:30; петък спининг 18:15; събота спининг 8:00 и пилатес 9:30; неделя Steel Training 8:30"
+              width={1536}
+              height={1024}
+              sizes="(min-width: 1152px) 1104px, 100vw"
+              className="h-auto w-full border-2 border-ink"
+            />
+          </a>
+          <p className="mt-2 text-sm text-ink/50 sm:hidden">
+            Докосни графика, за да го отвориш в по-голям размер.
+          </p>
+        </Reveal>
+      </section>
+
       <section className="border-y-2 border-accent bg-paper-dim px-4 py-16 sm:px-6">
         <Reveal className="mx-auto max-w-6xl">
           <h2 className="font-display text-3xl">Инструктори</h2>
