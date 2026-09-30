@@ -2,11 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { getDb } from "@/db";
 import { sports } from "@/db/schema";
+import { sportPosters } from "@/lib/sport-images";
 import { Reveal, StaggerGrid } from "./reveal";
-
-const sportImages: Record<string, string> = {
-  spinning: "/spinning-studio.jpg",
-};
 
 export default async function HomePage() {
   const db = getDb();
@@ -54,13 +51,14 @@ export default async function HomePage() {
               href={`/sports/${sport.slug}`}
               className="card-lift group block border-2 border-transparent bg-ink text-paper transition-[border-color] hover:border-accent"
             >
-              <div className="placeholder-media relative aspect-[4/3] w-full overflow-hidden">
-                {sportImages[sport.slug] ? (
+              <div className="placeholder-media relative aspect-[3/4] w-full overflow-hidden">
+                {sportPosters[sport.slug] ? (
                   <Image
-                    src={sportImages[sport.slug]}
+                    src={sportPosters[sport.slug]}
                     alt={sport.name}
                     fill
-                    className="object-cover"
+                    sizes="(min-width: 640px) 33vw, 100vw"
+                    className="object-cover object-top"
                   />
                 ) : (
                   <span className="absolute bottom-2 right-2 bg-ink/70 px-2 py-1 text-[10px] tracking-widest text-paper/60">

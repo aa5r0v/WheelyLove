@@ -15,10 +15,7 @@ import { formatDateLong, formatTime } from "@/lib/format";
 import BookButton from "./book-button";
 import WaitlistButton from "./waitlist-button";
 import { Reveal, StaggerGrid } from "@/app/reveal";
-
-const sportImages: Record<string, string> = {
-  spinning: "/spinning-studio.jpg",
-};
+import { sportPosters } from "@/lib/sport-images";
 
 export default async function SportPage({
   params,
@@ -99,29 +96,28 @@ export default async function SportPage({
   return (
     <div>
       <section className="relative overflow-hidden border-b-2 border-accent bg-ink text-paper">
-        {sportImages[sport.slug] ? (
-          <>
-            <Image
-              src={sportImages[sport.slug]}
-              alt={sport.name}
-              fill
-              priority
-              className="object-cover opacity-70"
+        <div className="placeholder-media absolute inset-0 opacity-40" />
+        <Reveal className="relative z-10 mx-auto flex max-w-4xl flex-col gap-8 px-4 py-12 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div>
+            <span
+              className="inline-block h-1.5 w-14"
+              style={{ backgroundColor: sport.color }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
-          </>
-        ) : (
-          <div className="placeholder-media absolute inset-0 opacity-40" />
-        )}
-        <Reveal className="relative z-10 mx-auto max-w-4xl px-4 py-16 sm:px-6">
-          <span
-            className="inline-block h-1.5 w-14"
-            style={{ backgroundColor: sport.color }}
-          />
-          <h1 className="font-display mt-4 text-5xl sm:text-6xl">
-            {sport.name}
-          </h1>
-          <p className="mt-4 max-w-lg text-paper/70">{sport.description}</p>
+            <h1 className="font-display mt-4 text-5xl sm:text-6xl">
+              {sport.name}
+            </h1>
+            <p className="mt-4 max-w-lg text-paper/70">{sport.description}</p>
+          </div>
+          {sportPosters[sport.slug] && (
+            <Image
+              src={sportPosters[sport.slug]}
+              alt={sport.name}
+              width={300}
+              height={450}
+              priority
+              className="h-auto w-44 shrink-0 border-2 border-accent sm:w-56"
+            />
+          )}
         </Reveal>
       </section>
 
