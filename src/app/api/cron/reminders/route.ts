@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { sendBookingReminderEmail } from "@/lib/email";
@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       id: bookings.id,
       userEmail: bookings.userEmail,
       userPhone: bookings.userPhone,
+      paymentMethod: bookings.paymentMethod,
       startTime: classSessions.startTime,
       sportName: sports.name,
       instructorName: instructors.name,
@@ -30,7 +31,8 @@ export async function GET(req: Request) {
     .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
     .where(
       and(
-        eq(bookings.status, "confirmed"),
+        // Pay-on-site bookings stay "pending" until the studio marks them paid — remind them too.
+        inArray(bookings.status, ["pending", "confirmed"]),
         isNull(bookings.reminderSentAt),
         gte(classSessions.startTime, now),
         lte(classSessions.startTime, windowEnd)
@@ -44,7 +46,7 @@ export async function GET(req: Request) {
         sportName: b.sportName,
         instructorName: b.instructorName,
         startTime: b.startTime,
-        paymentMethod: "card",
+        paymentMethod: b.paymentMethod,
       }),
       sendBookingReminderSms({
         to: b.userPhone,

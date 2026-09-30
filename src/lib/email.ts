@@ -14,14 +14,73 @@ const FROM = `WheelyLove <reservations@${process.env.RESEND_EMAIL_DOMAIN}>`;
 const STUDIO_EMAIL = "wheelylove@abv.bg";
 const STUDIO_PHONE = "+359 886 573 880";
 
-const CONTACT_FOOTER = `
-  <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0 12px;" />
-  <p style="font-family: sans-serif; font-size: 13px; color: #666;">
-    Въпроси? Отговори на този имейл или се обади на
-    <a href="tel:${STUDIO_PHONE.replace(/\s/g, "")}">${STUDIO_PHONE}</a>.<br />
-    WheelyLove · ${STUDIO_EMAIL}
-  </p>
-`;
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://wheelylove.net";
+
+const INK = "#0a0a0a";
+const ACCENT = "#3fa34d";
+const MUTED = "#666666";
+
+// Email clients ignore <style> and external CSS, so everything is inline and table-based.
+function layout(params: { heading: string; body: string; button?: { label: string; url: string } }) {
+  const button = params.button
+    ? `
+      <tr>
+        <td style="padding: 8px 32px 8px;">
+          <a href="${params.button.url}"
+             style="display: inline-block; background: ${ACCENT}; color: #ffffff; text-decoration: none;
+                    font-weight: bold; letter-spacing: 0.5px; padding: 12px 24px;">
+            ${params.button.label}
+          </a>
+        </td>
+      </tr>`
+    : "";
+
+  return `
+  <div style="background: #f2f9f1; padding: 24px 12px; font-family: Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="max-width: 560px; margin: 0 auto; background: #ffffff; border-top: 4px solid ${ACCENT};">
+      <tr>
+        <td style="background: ${INK}; padding: 16px 32px;">
+          <img src="${SITE_URL}/email-logo.png" width="40" height="40" alt=""
+               style="vertical-align: middle; border: 0;" />
+          <span style="vertical-align: middle; color: #ffffff; font-size: 20px; font-weight: bold;
+                       letter-spacing: 1px; margin-left: 8px;">WHEELYLOVE</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 28px 32px 8px; color: ${INK}; font-size: 15px; line-height: 1.6;">
+          <h1 style="margin: 0 0 16px; font-size: 22px; color: ${INK};">${params.heading}</h1>
+          ${params.body}
+        </td>
+      </tr>
+      ${button}
+      <tr>
+        <td style="padding: 24px 32px 28px; color: ${MUTED}; font-size: 13px; line-height: 1.5;">
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 0 0 16px;" />
+          Въпроси? Отговори на този имейл или се обади на
+          <a href="tel:${STUDIO_PHONE.replace(/\s/g, "")}" style="color: ${ACCENT};">${STUDIO_PHONE}</a>.<br />
+          WheelyLove · <a href="${SITE_URL}" style="color: ${ACCENT};">${SITE_URL.replace(/^https?:\/\//, "")}</a>
+        </td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function details(rows: [string, string][]) {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0"
+           style="width: 100%; margin: 0 0 16px; background: #f2f9f1; border-left: 4px solid ${ACCENT};">
+      ${rows
+        .map(
+          ([label, value]) => `
+        <tr>
+          <td style="padding: 8px 12px; color: ${MUTED}; width: 110px; vertical-align: top;">${label}</td>
+          <td style="padding: 8px 12px; font-weight: bold;">${value}</td>
+        </tr>`
+        )
+        .join("")}
+    </table>`;
+}
 
 async function sendEmail(params: { to: string; subject: string; html: string }) {
   const { data, error } = await getResend().emails.send({
@@ -29,7 +88,7 @@ async function sendEmail(params: { to: string; subject: string; html: string }) 
     replyTo: STUDIO_EMAIL,
     to: [params.to],
     subject: params.subject,
-    html: params.html + CONTACT_FOOTER,
+    html: params.html,
   });
   if (error) {
     console.error("Failed to send email:", error);
@@ -50,22 +109,26 @@ export async function sendBookingConfirmationEmail(info: BookingEmailInfo) {
 
   const paymentNote =
     info.paymentMethod === "cash"
-      ? "Плащането е в брой на място, преди началото на тренировката."
-      : "Плащането с карта е потвърдено.";
+      ? "Плащането е на място, преди началото на тренировката."
+      : "Плащането с карта е получено.";
 
   await sendEmail({
     to: info.to,
-    subject: `Потвърдена резервация: ${info.sportName} — ${dateStr}`,
-    html: `
-      <div style="font-family: sans-serif; line-height: 1.5;">
-        <h2>Резервацията е потвърдена 🎉</h2>
-        <p><strong>Тренировка:</strong> ${info.sportName}</p>
-        <p><strong>Инструктор:</strong> ${info.instructorName}</p>
-        <p><strong>Дата и час:</strong> ${dateStr}</p>
-        <p>${paymentNote}</p>
-        <p>До скоро!</p>
-      </div>
-    `,
+    subject: `Резервацията ти е приета: ${info.sportName} — ${dateStr}`,
+    html: layout({
+      heading: "Резервацията ти е приета 🎉",
+      body: `
+        ${details([
+          ["Тренировка", info.sportName],
+          ["Инструктор", info.instructorName],
+          ["Дата и час", dateStr],
+        ])}
+        <p style="margin: 0 0 12px;">${paymentNote}</p>
+        <p style="margin: 0 0 12px;">Ако не можеш да дойдеш, откажи резервацията от „Моите резервации“,
+          за да освободиш мястото за някой друг.</p>
+      `,
+      button: { label: "Моите резервации", url: `${SITE_URL}/my-bookings` },
+    }),
   });
 }
 
@@ -75,15 +138,23 @@ export async function sendBookingReminderEmail(info: BookingEmailInfo) {
   await sendEmail({
     to: info.to,
     subject: `Напомняне: ${info.sportName} — ${dateStr}`,
-    html: `
-      <div style="font-family: sans-serif; line-height: 1.5;">
-        <h2>Напомняне за тренировка</h2>
-        <p><strong>Тренировка:</strong> ${info.sportName}</p>
-        <p><strong>Инструктор:</strong> ${info.instructorName}</p>
-        <p><strong>Дата и час:</strong> ${dateStr}</p>
-        <p>Очакваме те!</p>
-      </div>
-    `,
+    html: layout({
+      heading: "Очакваме те скоро! 🚴",
+      body: `
+        ${details([
+          ["Тренировка", info.sportName],
+          ["Инструктор", info.instructorName],
+          ["Дата и час", dateStr],
+        ])}
+        <p style="margin: 0 0 12px;">Ела 10 минути по-рано. Не забравяй вода и кърпа.</p>
+        ${
+          info.paymentMethod === "cash"
+            ? `<p style="margin: 0 0 12px;">Плащането е на място, преди началото на тренировката.</p>`
+            : ""
+        }
+      `,
+      button: { label: "Моите резервации", url: `${SITE_URL}/my-bookings` },
+    }),
   });
 }
 
@@ -98,15 +169,18 @@ export async function sendWaitlistSpotOpenEmail(info: {
   await sendEmail({
     to: info.to,
     subject: `Освободи се място: ${info.sportName} — ${dateStr}`,
-    html: `
-      <div style="font-family: sans-serif; line-height: 1.5;">
-        <h2>Освободи се място!</h2>
-        <p><strong>Тренировка:</strong> ${info.sportName}</p>
-        <p><strong>Дата и час:</strong> ${dateStr}</p>
-        <p>Мястото е за този, който се запише пръв — побързай.</p>
-        <p><a href="${info.bookUrl}">Запиши се сега</a></p>
-      </div>
-    `,
+    html: layout({
+      heading: "Освободи се място!",
+      body: `
+        ${details([
+          ["Тренировка", info.sportName],
+          ["Дата и час", dateStr],
+        ])}
+        <p style="margin: 0 0 12px;">Беше в списъка за чакащи за този час. Мястото е за този,
+          който се запише пръв — побързай.</p>
+      `,
+      button: { label: "Запиши се сега", url: info.bookUrl },
+    }),
   });
 }
 
@@ -115,24 +189,39 @@ type BookingCancelledInfo = {
   sportName: string;
   startTime: Date;
   refunded: boolean;
+  // "session" when the studio cancelled the whole class, not just this booking.
+  reason: "booking" | "session";
 };
 
 export async function sendBookingCancelledEmail(info: BookingCancelledInfo) {
   const dateStr = formatDateTimeLong(info.startTime);
   const refundNote = info.refunded
-    ? "Сумата ще бъде възстановена по картата ти в рамките на няколко работни дни."
+    ? `<p style="margin: 0 0 12px;">Сумата ще бъде възстановена по картата ти в рамките на няколко работни дни.</p>`
     : "";
+
+  const sessionCancelled = info.reason === "session";
 
   await sendEmail({
     to: info.to,
-    subject: `Отказана резервация: ${info.sportName} — ${dateStr}`,
-    html: `
-      <div style="font-family: sans-serif; line-height: 1.5;">
-        <h2>Резервацията е отказана</h2>
-        <p><strong>Тренировка:</strong> ${info.sportName}</p>
-        <p><strong>Дата и час:</strong> ${dateStr}</p>
-        <p>${refundNote}</p>
-      </div>
-    `,
+    subject: sessionCancelled
+      ? `Тренировката е отменена: ${info.sportName} — ${dateStr}`
+      : `Отказана резервация: ${info.sportName} — ${dateStr}`,
+    html: layout({
+      heading: sessionCancelled ? "Тренировката е отменена" : "Резервацията е отказана",
+      body: `
+        ${details([
+          ["Тренировка", info.sportName],
+          ["Дата и час", dateStr],
+        ])}
+        ${
+          sessionCancelled
+            ? `<p style="margin: 0 0 12px;">За съжаление трябваше да отменим тази тренировка.
+                 Извиняваме се за неудобството — ще се радваме да те видим на друг час.</p>`
+            : ""
+        }
+        ${refundNote}
+      `,
+      button: { label: "Виж свободните часове", url: `${SITE_URL}/#schedule` },
+    }),
   });
 }

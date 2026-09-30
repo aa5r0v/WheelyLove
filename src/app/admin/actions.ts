@@ -11,8 +11,6 @@ import {
   sports,
 } from "@/db/schema";
 import { isAdmin } from "@/lib/admin";
-import { sendBookingConfirmationEmail } from "@/lib/email";
-import { sendBookingConfirmationSms } from "@/lib/sms";
 import { uploadToStorage, deleteFromStorage } from "@/lib/storage";
 import { cancelBookingAndNotify } from "@/lib/bookings";
 import { notifyWaitlist } from "@/lib/waitlist";
@@ -121,7 +119,7 @@ export async function cancelSession(sessionId: number) {
     );
 
   for (const b of activeBookings) {
-    await cancelBookingAndNotify(b.id);
+    await cancelBookingAndNotify(b.id, "session");
   }
 
   revalidatePath("/admin/sessions");
@@ -134,6 +132,8 @@ export async function cancelBooking(bookingId: number) {
   revalidatePath("/admin/bookings");
 }
 
+// Marks a pay-on-site booking as paid. The customer already got a confirmation when booking,
+// so this is an internal note for the studio and sends nothing.
 export async function confirmCashBooking(bookingId: number) {
   await assertAdmin();
   const db = getDb();
@@ -142,37 +142,6 @@ export async function confirmCashBooking(bookingId: number) {
     .update(bookings)
     .set({ status: "confirmed" })
     .where(eq(bookings.id, bookingId));
-
-  const [details] = await db
-    .select({
-      userEmail: bookings.userEmail,
-      userPhone: bookings.userPhone,
-      startTime: classSessions.startTime,
-      sportName: sports.name,
-      instructorName: instructors.name,
-    })
-    .from(bookings)
-    .innerJoin(classSessions, eq(bookings.sessionId, classSessions.id))
-    .innerJoin(sports, eq(classSessions.sportId, sports.id))
-    .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
-    .where(eq(bookings.id, bookingId));
-
-  if (details) {
-    await Promise.all([
-      sendBookingConfirmationEmail({
-        to: details.userEmail,
-        sportName: details.sportName,
-        instructorName: details.instructorName,
-        startTime: details.startTime,
-        paymentMethod: "cash",
-      }),
-      sendBookingConfirmationSms({
-        to: details.userPhone,
-        sportName: details.sportName,
-        startTime: details.startTime,
-      }),
-    ]);
-  }
 
   revalidatePath("/admin/bookings");
 }

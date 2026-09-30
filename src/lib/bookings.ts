@@ -20,7 +20,10 @@ export async function releaseSessionSpot(sessionId: number) {
   }
 }
 
-export async function cancelBookingAndNotify(bookingId: number) {
+export async function cancelBookingAndNotify(
+  bookingId: number,
+  reason: "booking" | "session" = "booking"
+) {
   const db = getDb();
 
   const [booking] = await db
@@ -68,11 +71,13 @@ export async function cancelBookingAndNotify(bookingId: number) {
       sportName: booking.sportName,
       startTime: booking.startTime,
       refunded,
+      reason,
     }),
     sendBookingCancelledSms({
       to: booking.userPhone,
       sportName: booking.sportName,
       startTime: booking.startTime,
+      reason,
     }),
   ]);
 }

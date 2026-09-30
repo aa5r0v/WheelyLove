@@ -47,7 +47,7 @@ export async function sendBookingConfirmationSms(info: BookingSmsInfo) {
   const dateStr = formatDateTimeShort(info.startTime);
   await sendSms(
     info.to,
-    `WheelyLove: резервацията ти за ${info.sportName} на ${dateStr} е потвърдена.`
+    `WheelyLove: резервацията ти за ${info.sportName} на ${dateStr} е приета. Плащането е на място.`
   );
 }
 
@@ -59,10 +59,14 @@ export async function sendBookingReminderSms(info: BookingSmsInfo) {
   );
 }
 
-export async function sendBookingCancelledSms(info: BookingSmsInfo) {
+export async function sendBookingCancelledSms(
+  info: BookingSmsInfo & { reason: "booking" | "session" }
+) {
   const dateStr = formatDateTimeShort(info.startTime);
   await sendSms(
     info.to,
-    `WheelyLove: резервацията ти за ${info.sportName} на ${dateStr} е отказана.`
+    info.reason === "session"
+      ? `WheelyLove: тренировката ${info.sportName} на ${dateStr} е отменена. Извиняваме се!`
+      : `WheelyLove: резервацията ти за ${info.sportName} на ${dateStr} е отказана.`
   );
 }
