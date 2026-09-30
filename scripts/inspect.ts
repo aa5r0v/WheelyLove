@@ -8,7 +8,7 @@ async function main() {
     const r = await db.execute(
       sql`SELECT column_name FROM information_schema.columns WHERE table_name = ${t}`
     );
-    console.log(t, ":", r.rows.map((row) => row.column_name).join(", "));
+    console.log(t, ":", r.map((row) => row.column_name).join(", "));
   }
 }
 
