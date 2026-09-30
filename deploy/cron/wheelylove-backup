@@ -1,0 +1,5 @@
+# WheelyLove nightly database backup -> /etc/cron.d/wheelylove-backup
+# (server local time; the exact hour does not matter, 02:17 is quiet)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+17 2 * * * root /srv/wheelylove/deploy/scripts/backup.sh 2>&1 | logger -t wheelylove-backup

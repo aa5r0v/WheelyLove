@@ -5,6 +5,9 @@ import { sports } from "@/db/schema";
 import { sportPosters } from "@/lib/sport-images";
 import { Reveal, StaggerGrid } from "./reveal";
 
+// Reads the DB on every request; must not be prerendered at build time.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const db = getDb();
   const allSports = await db.select().from(sports);

@@ -1,0 +1,15 @@
+[Unit]
+Description=WheelyLove egress firewall (own iptables chains, see deploy/firewall)
+After=docker.service network-online.target
+Wants=docker.service
+# If docker is restarted, this unit is restarted too (rules re-applied after docker is back).
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wheelylove-firewall apply
+ExecStop=/usr/local/sbin/wheelylove-firewall remove
+
+[Install]
+WantedBy=multi-user.target

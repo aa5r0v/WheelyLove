@@ -1,0 +1,11 @@
+[Unit]
+Description=WheelyLove reminders - every day 08:00 UTC
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 UTC
+Persistent=true
+AccuracySec=30s
+Unit=wheelylove-reminders.service
+
+[Install]
+WantedBy=timers.target

@@ -4,7 +4,6 @@ import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
-import { sendBookingConfirmationSms } from "@/lib/sms";
 import { cancelBookingAtomic } from "@/lib/bookings";
 
 export async function POST(req: Request) {
@@ -53,7 +52,6 @@ export async function POST(req: Request) {
       const [details] = await db
         .select({
           userEmail: bookings.userEmail,
-          userPhone: bookings.userPhone,
           startTime: classSessions.startTime,
           sportName: sports.name,
           instructorName: instructors.name,
@@ -65,20 +63,13 @@ export async function POST(req: Request) {
         .where(eq(bookings.id, bookingId));
 
       if (confirmed.length > 0 && details) {
-        await Promise.all([
-          sendBookingConfirmationEmail({
-            to: details.userEmail,
-            sportName: details.sportName,
-            instructorName: details.instructorName,
-            startTime: details.startTime,
-            paymentMethod: "card",
-          }),
-          sendBookingConfirmationSms({
-            to: details.userPhone,
-            sportName: details.sportName,
-            startTime: details.startTime,
-          }),
-        ]);
+        await sendBookingConfirmationEmail({
+          to: details.userEmail,
+          sportName: details.sportName,
+          instructorName: details.instructorName,
+          startTime: details.startTime,
+          paymentMethod: "card",
+        });
       }
     }
   }

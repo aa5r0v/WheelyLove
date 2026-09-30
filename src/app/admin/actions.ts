@@ -207,10 +207,12 @@ export async function uploadGalleryItem(formData: FormData) {
     throw new Error("Няма избран файл.");
   }
 
-  // Only validated images are accepted (see uploadToStorage).
-  const { url } = await uploadToStorage(file);
+  // Only validated JPEG/PNG/WebP/MP4 are accepted (real type from magic bytes, see saveUpload).
+  const { url, type: mediaType } = await uploadToStorage(file);
 
-  await db.insert(galleryItems).values({ type: "image", url, caption });
+  await db
+    .insert(galleryItems)
+    .values({ type: mediaType === "video/mp4" ? "video" : "image", url, caption });
   revalidatePath("/admin/gallery");
   revalidatePath("/gallery");
 }

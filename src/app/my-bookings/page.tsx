@@ -17,6 +17,10 @@ const statusColor: Record<string, string> = {
   cancelled: "text-red-600",
 };
 
+function isUpcoming(d: Date) {
+  return d.getTime() > Date.now();
+}
+
 export default async function MyBookingsPage() {
   const user = await currentUser();
   const db = getDb();
@@ -55,7 +59,7 @@ export default async function MyBookingsPage() {
       <div className="mt-8 space-y-3">
         {myBookings.map((b) => {
           const canCancel =
-            b.status !== "cancelled" && b.startTime.getTime() > Date.now();
+            b.status !== "cancelled" && isUpcoming(b.startTime);
           return (
             <div
               key={b.id}

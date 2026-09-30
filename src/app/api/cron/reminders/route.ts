@@ -4,7 +4,6 @@ import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { sendBookingReminderEmail } from "@/lib/email";
-import { sendBookingReminderSms } from "@/lib/sms";
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -26,7 +25,6 @@ export async function GET(req: Request) {
     .select({
       id: bookings.id,
       userEmail: bookings.userEmail,
-      userPhone: bookings.userPhone,
       paymentMethod: bookings.paymentMethod,
       startTime: classSessions.startTime,
       sportName: sports.name,
@@ -57,20 +55,13 @@ export async function GET(req: Request) {
     if (!claimed) continue;
 
     sent++;
-    await Promise.all([
-      sendBookingReminderEmail({
-        to: b.userEmail,
-        sportName: b.sportName,
-        instructorName: b.instructorName,
-        startTime: b.startTime,
-        paymentMethod: b.paymentMethod,
-      }),
-      sendBookingReminderSms({
-        to: b.userPhone,
-        sportName: b.sportName,
-        startTime: b.startTime,
-      }),
-    ]);
+    await sendBookingReminderEmail({
+      to: b.userEmail,
+      sportName: b.sportName,
+      instructorName: b.instructorName,
+      startTime: b.startTime,
+      paymentMethod: b.paymentMethod,
+    });
   }
 
   return NextResponse.json({ sent });

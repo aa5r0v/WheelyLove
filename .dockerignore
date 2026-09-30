@@ -1,0 +1,29 @@
+# Keep the build context small and free of secrets.
+.git
+.gitignore
+.gitattributes
+.claude
+.vscode
+.idea
+
+node_modules
+.next
+out
+build
+coverage
+.vercel
+*.tsbuildinfo
+npm-debug.log*
+
+# secrets / env - never into the image
+.env
+.env.*
+*.pem
+
+# deploy tooling is not part of the app image
+deploy
+Dockerfile
+.dockerignore
+
+# docs
+*.md

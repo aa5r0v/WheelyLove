@@ -1,0 +1,2 @@
+# Scripts and configs run on Linux: always LF (autocrlf on Windows would break bash shebangs).
+* text eol=lf

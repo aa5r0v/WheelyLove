@@ -20,12 +20,12 @@ export default async function AdminGalleryPage() {
       >
         <div>
           <label className="block text-xs font-medium text-neutral-600">
-            Файл (JPEG, PNG или WebP, до 8 MB)
+            Файл (JPEG, PNG, WebP до 8 MB или MP4 до 50 MB)
           </label>
           <input
             type="file"
             name="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,video/mp4"
             required
             className="mt-1"
           />

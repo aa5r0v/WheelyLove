@@ -1,0 +1,13 @@
+[Unit]
+Description=WheelyLove daily booking reminders (calls /api/cron/reminders on loopback)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/wheelylove/deploy/scripts/cron-reminders.sh
+# The script reads the secret from /srv/wheelylove/.env (root only) - nothing on the command line.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+TimeoutStartSec=300

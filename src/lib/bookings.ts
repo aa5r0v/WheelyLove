@@ -3,7 +3,6 @@ import { getDb, type DbOrTx } from "@/db";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { refundPayment } from "./stripe";
 import { sendBookingCancelledEmail } from "./email";
-import { sendBookingCancelledSms } from "./sms";
 import { notifyWaitlist } from "./waitlist";
 
 // Frees one spot. Pass a transaction so it commits together with the status change.
@@ -63,7 +62,6 @@ export async function cancelBookingAndNotify(
   const [booking] = await db
     .select({
       userEmail: bookings.userEmail,
-      userPhone: bookings.userPhone,
       startTime: classSessions.startTime,
       sportName: sports.name,
     })
@@ -83,19 +81,11 @@ export async function cancelBookingAndNotify(
     refunded = await refundPayment(cancelled.stripePaymentIntentId);
   }
 
-  await Promise.all([
-    sendBookingCancelledEmail({
-      to: booking.userEmail,
-      sportName: booking.sportName,
-      startTime: booking.startTime,
-      refunded,
-      reason,
-    }),
-    sendBookingCancelledSms({
-      to: booking.userPhone,
-      sportName: booking.sportName,
-      startTime: booking.startTime,
-      reason,
-    }),
-  ]);
+  await sendBookingCancelledEmail({
+    to: booking.userEmail,
+    sportName: booking.sportName,
+    startTime: booking.startTime,
+    refunded,
+    reason,
+  });
 }

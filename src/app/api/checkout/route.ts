@@ -13,7 +13,6 @@ import {
 } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
-import { sendBookingConfirmationSms } from "@/lib/sms";
 import { cancelBookingAtomic } from "@/lib/bookings";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -167,20 +166,13 @@ export async function POST(req: Request) {
   }
 
   if (paymentMethod === "cash") {
-    await Promise.all([
-      sendBookingConfirmationEmail({
-        to: email,
-        sportName: session.sportName,
-        instructorName: session.instructorName,
-        startTime: session.startTime,
-        paymentMethod: "cash",
-      }),
-      sendBookingConfirmationSms({
-        to: phone,
-        sportName: session.sportName,
-        startTime: session.startTime,
-      }),
-    ]);
+    await sendBookingConfirmationEmail({
+      to: email,
+      sportName: session.sportName,
+      instructorName: session.instructorName,
+      startTime: session.startTime,
+      paymentMethod: "cash",
+    });
     return NextResponse.json({ ok: true });
   }
 

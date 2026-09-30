@@ -10,7 +10,8 @@ function useInView(margin: string) {
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
+      // Deferred so the state update is not synchronous inside the effect body.
+      queueMicrotask(() => setVisible(true));
       return;
     }
     const observer = new IntersectionObserver(

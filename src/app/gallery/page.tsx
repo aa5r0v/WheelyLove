@@ -3,6 +3,9 @@ import { getDb } from "@/db";
 import { galleryItems } from "@/db/schema";
 import GalleryGrid from "./gallery-grid";
 
+// Reads the DB on every request; must not be prerendered at build time.
+export const dynamic = "force-dynamic";
+
 export default async function GalleryPage() {
   const db = getDb();
   const items = await db
