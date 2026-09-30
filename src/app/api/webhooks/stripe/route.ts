@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { sendBookingConfirmationSms } from "@/lib/sms";
-import { releaseSessionSpot } from "@/lib/bookings";
+import { cancelBookingAtomic } from "@/lib/bookings";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     const session = event.data.object;
     const bookingId = Number(session.metadata?.bookingId);
     if (bookingId) {
-      await db
+      // Conditional update makes redelivered events idempotent: only the first one matches.
+      const confirmed = await db
         .update(bookings)
         .set({
           status: "confirmed",
@@ -42,7 +43,12 @@ export async function POST(req: Request) {
               ? session.payment_intent
               : session.payment_intent?.id,
         })
-        .where(eq(bookings.id, bookingId));
+        .where(and(eq(bookings.id, bookingId), eq(bookings.status, "pending")))
+        .returning({ id: bookings.id });
+
+      if (confirmed.length === 0) {
+        console.warn(`Stripe webhook: booking ${bookingId} was not pending, skipping confirmation.`);
+      }
 
       const [details] = await db
         .select({
@@ -58,7 +64,7 @@ export async function POST(req: Request) {
         .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
         .where(eq(bookings.id, bookingId));
 
-      if (details) {
+      if (confirmed.length > 0 && details) {
         await Promise.all([
           sendBookingConfirmationEmail({
             to: details.userEmail,
@@ -84,18 +90,7 @@ export async function POST(req: Request) {
     const session = event.data.object as { metadata?: { bookingId?: string } };
     const bookingId = Number(session.metadata?.bookingId);
     if (bookingId) {
-      const [existing] = await db
-        .select({ status: bookings.status, sessionId: bookings.sessionId })
-        .from(bookings)
-        .where(eq(bookings.id, bookingId));
-
-      if (existing && existing.status !== "cancelled") {
-        await db
-          .update(bookings)
-          .set({ status: "cancelled" })
-          .where(eq(bookings.id, bookingId));
-        await releaseSessionSpot(existing.sessionId);
-      }
+      await cancelBookingAtomic(bookingId);
     }
   }
 

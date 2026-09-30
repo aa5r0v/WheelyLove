@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
@@ -9,6 +9,13 @@ import {
   waitlistEntries,
 } from "@/db/schema";
 import { cancelBookingAndNotify } from "./bookings";
+
+// Tests must never send real email/SMS (and need no provider API keys).
+vi.mock("./email", () => ({
+  sendBookingCancelledEmail: vi.fn(async () => {}),
+  sendWaitlistSpotOpenEmail: vi.fn(async () => {}),
+}));
+vi.mock("./sms", () => ({ sendBookingCancelledSms: vi.fn(async () => {}) }));
 
 describe("cancelBookingAndNotify", () => {
   const db = getDb();

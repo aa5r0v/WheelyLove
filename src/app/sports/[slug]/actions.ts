@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { bookings, classSessions, sports, waitlistEntries } from "@/db/schema";
+
+const MAX_WAITLIST_ENTRIES_PER_USER = 20;
 
 export async function joinWaitlist(sessionId: number) {
   const user = await currentUser();
@@ -42,6 +44,15 @@ export async function joinWaitlist(sessionId: number) {
     );
   if (existingBooking) {
     throw new Error("Вече имаш резервация за този час.");
+  }
+
+  // Cap per-user waitlist entries so one account can't flood the table (and later the mailer).
+  const [{ active }] = await db
+    .select({ active: count() })
+    .from(waitlistEntries)
+    .where(eq(waitlistEntries.userId, user.id));
+  if (active >= MAX_WAITLIST_ENTRIES_PER_USER) {
+    throw new Error("Твърде много записвания в списъка на чакащите.");
   }
 
   await db
