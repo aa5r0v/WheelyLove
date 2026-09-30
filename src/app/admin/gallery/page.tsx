@@ -20,12 +20,12 @@ export default async function AdminGalleryPage() {
       >
         <div>
           <label className="block text-xs font-medium text-neutral-600">
-            Файл (снимка или видео)
+            Файл (JPEG, PNG или WebP, до 8 MB)
           </label>
           <input
             type="file"
             name="file"
-            accept="image/*,video/*"
+            accept="image/jpeg,image/png,image/webp"
             required
             className="mt-1"
           />
@@ -66,7 +66,7 @@ export default async function AdminGalleryPage() {
             <form
               action={async () => {
                 "use server";
-                await deleteGalleryItem(item.id, item.url);
+                await deleteGalleryItem(item.id);
               }}
               className="absolute right-1 top-1"
             >

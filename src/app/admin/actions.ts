@@ -141,7 +141,7 @@ export async function confirmCashBooking(bookingId: number) {
   await db
     .update(bookings)
     .set({ status: "confirmed" })
-    .where(eq(bookings.id, bookingId));
+    .where(and(eq(bookings.id, bookingId), eq(bookings.status, "pending")));
 
   revalidatePath("/admin/bookings");
 }
@@ -207,19 +207,23 @@ export async function uploadGalleryItem(formData: FormData) {
     throw new Error("Няма избран файл.");
   }
 
-  const type = file.type.startsWith("video") ? "video" : "image";
+  // Only validated images are accepted (see uploadToStorage).
   const { url } = await uploadToStorage(file);
 
-  await db.insert(galleryItems).values({ type, url, caption });
+  await db.insert(galleryItems).values({ type: "image", url, caption });
   revalidatePath("/admin/gallery");
   revalidatePath("/gallery");
 }
 
-export async function deleteGalleryItem(id: number, url: string) {
+export async function deleteGalleryItem(id: number) {
   await assertAdmin();
   const db = getDb();
-  await db.delete(galleryItems).where(eq(galleryItems.id, id));
-  await deleteFromStorage(url);
+  // The URL comes from the DB, never from the client.
+  const [deleted] = await db
+    .delete(galleryItems)
+    .where(eq(galleryItems.id, id))
+    .returning({ url: galleryItems.url });
+  if (deleted) await deleteFromStorage(deleted.url);
   revalidatePath("/admin/gallery");
   revalidatePath("/gallery");
 }
