@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "bookings_active_session_user_idx" ON "bookings" USING btree ("session_id","user_id") WHERE "bookings"."status" in ('pending', 'confirmed');

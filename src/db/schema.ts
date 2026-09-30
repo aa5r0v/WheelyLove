@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -57,23 +58,32 @@ export const classSessions = pgTable("class_sessions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const bookings = pgTable("bookings", {
-  id: serial("id").primaryKey(),
-  sessionId: integer("session_id")
-    .notNull()
-    .references(() => classSessions.id, { onDelete: "restrict" }),
-  userId: varchar("user_id", { length: 128 }).notNull(),
-  userEmail: varchar("user_email", { length: 256 }).notNull(),
-  userPhone: varchar("user_phone", { length: 32 }).notNull(),
-  status: bookingStatusEnum("status").notNull().default("pending"),
-  paymentMethod: paymentMethodEnum("payment_method").notNull().default("card"),
-  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", {
-    length: 256,
-  }),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 256 }),
-  reminderSentAt: timestamp("reminder_sent_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const bookings = pgTable(
+  "bookings",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => classSessions.id, { onDelete: "restrict" }),
+    userId: varchar("user_id", { length: 128 }).notNull(),
+    userEmail: varchar("user_email", { length: 256 }).notNull(),
+    userPhone: varchar("user_phone", { length: 32 }).notNull(),
+    status: bookingStatusEnum("status").notNull().default("pending"),
+    paymentMethod: paymentMethodEnum("payment_method").notNull().default("card"),
+    stripeCheckoutSessionId: varchar("stripe_checkout_session_id", {
+      length: 256,
+    }),
+    stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 256 }),
+    reminderSentAt: timestamp("reminder_sent_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    // One active (pending/confirmed) booking per user per session.
+    uniqueIndex("bookings_active_session_user_idx")
+      .on(t.sessionId, t.userId)
+      .where(sql`${t.status} in ('pending', 'confirmed')`),
+  ]
+);
 
 export const waitlistEntries = pgTable(
   "waitlist_entries",
