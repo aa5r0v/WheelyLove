@@ -34,13 +34,20 @@ describe("pure helpers", () => {
     expect(resolveDate(undefined, NOW)).toBe("2026-10-12");
   });
 
-  it("occupancyOf: free / almost (<=3) / full", () => {
-    expect(occupancyOf(7)).toBe("free");
-    expect(occupancyOf(4)).toBe("free");
-    expect(occupancyOf(3)).toBe("almost");
-    expect(occupancyOf(1)).toBe("almost");
-    expect(occupancyOf(0)).toBe("full");
-    expect(occupancyOf(-1)).toBe("full");
+  it("occupancyOf: free / almost (<=3 left and at least half taken) / full", () => {
+    expect(occupancyOf(7, 12)).toBe("free");
+    expect(occupancyOf(4, 12)).toBe("free");
+    expect(occupancyOf(3, 12)).toBe("almost");
+    expect(occupancyOf(1, 12)).toBe("almost");
+    expect(occupancyOf(0, 12)).toBe("full");
+    expect(occupancyOf(-1, 12)).toBe("full");
+  });
+
+  it("occupancyOf: a small, mostly empty class is not 'almost full'", () => {
+    expect(occupancyOf(3, 3)).toBe("free"); // nobody booked yet
+    expect(occupancyOf(2, 3)).toBe("free"); // 1 of 3 taken
+    expect(occupancyOf(1, 3)).toBe("almost"); // 2 of 3 taken
+    expect(occupancyOf(2, 4)).toBe("almost"); // half taken
   });
 
   it("dayRange is 25 hours on the day DST ends", () => {

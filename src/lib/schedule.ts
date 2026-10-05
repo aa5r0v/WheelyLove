@@ -4,14 +4,15 @@ import { bookings, classSessions, instructors, sports, waitlistEntries } from "@
 import { fromSofiaDateTime, toSofiaDateInput } from "./format";
 
 export const SCHEDULE_DAYS = 14;
-// "Almost full" when this many places or fewer are left.
+// "Almost full" when this many places or fewer are left AND at least half of
+// the class is taken - an empty 3-place class must not look almost full.
 export const ALMOST_FULL_THRESHOLD = 3;
 
 export type Occupancy = "free" | "almost" | "full";
 
-export function occupancyOf(spotsLeft: number): Occupancy {
+export function occupancyOf(spotsLeft: number, capacity: number): Occupancy {
   if (spotsLeft <= 0) return "full";
-  return spotsLeft <= ALMOST_FULL_THRESHOLD ? "almost" : "free";
+  return spotsLeft <= ALMOST_FULL_THRESHOLD && spotsLeft * 2 <= capacity ? "almost" : "free";
 }
 
 function addDays(date: string, n: number): string {
@@ -117,7 +118,7 @@ export async function getDaySessions(
       ...r,
       durationMin: Math.round((r.endTime.getTime() - r.startTime.getTime()) / 60_000),
       spotsLeft,
-      occupancy: occupancyOf(spotsLeft),
+      occupancy: occupancyOf(spotsLeft, r.capacity),
       waitingCount: waiting.get(r.id) ?? 0,
     };
   });
