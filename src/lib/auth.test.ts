@@ -308,3 +308,24 @@ describe("admin role", () => {
     await expect(confirmCashBooking(999999)).resolves.toBeUndefined();
   });
 });
+
+describe("admin role vs email verification", () => {
+  it("an admin whose email is not verified is rejected by assertAdmin", async () => {
+    const email = `${tag}-unvadmin@test.local`;
+    createdUserEmails.push(email);
+    const u = await signUpUser({ email });
+    await verifyUserEmail(email);
+    await db.update(userTable).set({ role: "admin" }).where(eq(userTable.email, email));
+    const cookie = await signInCookie(email);
+    headerState.headers.set("cookie", cookie);
+    // Flip verification off after the session exists: the role alone must not be enough.
+    await db
+      .update(userTable)
+      .set({ emailVerified: false })
+      .where(eq(userTable.id, u.id));
+
+    await expect(confirmCashBooking(999999)).rejects.toThrow(
+      "Нямаш права за администратор."
+    );
+  });
+});

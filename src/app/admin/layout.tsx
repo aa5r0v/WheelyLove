@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }) {
   const session = await getSession();
   if (!session) redirect("/sign-in");
-  if (session.user.role !== "admin") {
+  if (session.user.role !== "admin" || !session.user.emailVerified) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-bold">Нямаш достъп</h1>
