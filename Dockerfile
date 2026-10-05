@@ -3,7 +3,7 @@
 # WheelyLove - production image (Next.js 16, output: "standalone").
 # Targets:
 #   runner  - the web app (default, the last stage)
-#   migrate - one-shot drizzle-kit migrate job
+#   migrate - one-shot drizzle-kit migrate job (also runs the scripts/ CLIs, see deploy/README.md)
 #
 # Build is driven by deploy/deploy.sh (memory-limited buildx builder).
 # NEXT_PUBLIC_* values are baked into the JS bundle at BUILD time -> build args.
@@ -28,7 +28,12 @@ FROM deps AS migrate
 ENV HOME=/tmp
 COPY drizzle.config.ts ./
 COPY drizzle ./drizzle
-COPY src/db/schema.ts ./src/db/schema.ts
+COPY src/db ./src/db
+# Admin CLIs (set-instructor, seed-demo, remove-demo) run in this image through tsx
+# (devDependency, present after the full npm ci). They import only src/db and
+# src/lib/{format,instructor-link}.ts, all with relative paths (no tsconfig needed).
+COPY src/lib/format.ts src/lib/instructor-link.ts ./src/lib/
+COPY scripts ./scripts
 USER node
 CMD ["node_modules/.bin/drizzle-kit", "migrate"]
 

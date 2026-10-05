@@ -172,6 +172,23 @@ bash /srv/wheelylove/deploy/rollback.sh <tag>      # към конкретна (
 регистриран с чужда парола) - собственикът трябва да зададе нова парола през „Забравена парола" преди
 първия вход.
 
+Инструктори (панел `/instructor`): акаунтът на инструктора се свързва ИЛИ от `/admin/instructors` („Свържи с акаунт“ по имейл на
+съществуващ потребител с потвърден имейл; администраторски акаунт се отказва), ИЛИ от командния ред - в контейнера
+`migrate` (има `scripts/` и `tsx`; `compose` е функцията от `deploy/scripts/lib.sh`):
+```bash
+source /srv/wheelylove/deploy/scripts/lib.sh   # дава функцията compose
+compose --profile tools run --rm migrate node_modules/.bin/tsx scripts/set-instructor.ts <имейл> <slug-на-инструктор>
+```
+Демо данни (фиктивни: инструктори Ани/Таби/Ели, 25 клиента, седмичният график, 4 седмици назад и напред; всичко е на
+домейн `demo.wheelylove.invalid` / slug `demo-*`). Без `--apply` е само проба (нищо не се записва):
+```bash
+compose --profile tools run --rm migrate node_modules/.bin/tsx scripts/seed-demo.ts                 # проба
+compose --profile tools run --rm migrate node_modules/.bin/tsx scripts/seed-demo.ts --apply [--password '<мин. 10 знака>']
+compose --profile tools run --rm migrate node_modules/.bin/tsx scripts/remove-demo.ts --apply      # маха САМО демото
+```
+Без `--password` се генерира парола и се показва ВЕДНЪЖ. `remove-demo` отказва (и не трие нищо), ако на демо час има
+истинска резервация или чакащ - първо ги отмени. Новият образ `migrate` трябва да е билднат с тази версия на Dockerfile.
+
 Резервен вариант без билд на VPS: `deploy.sh --image-tar app.tar migrate.tar release.tar.gz`, като образите са
 записани с `docker save` под имената `wheelylove-app:prebuilt` и `wheelylove-migrate:prebuilt`.
 
