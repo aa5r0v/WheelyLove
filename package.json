@@ -12,6 +12,7 @@
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
     "set-admin": "dotenv -e .env.admin -- tsx scripts/set-admin.ts",
+    "set-instructor": "dotenv -e .env.admin -- tsx scripts/set-instructor.ts",
     "test": "dotenv -e .env.local -- vitest run"
   },
   "dependencies": {
