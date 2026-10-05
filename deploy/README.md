@@ -186,6 +186,20 @@ bash /srv/wheelylove/deploy/rollback.sh <tag>      # към конкретна (
   първият release да се върне към версия на приложението, която още ги чете.
   Точните стъпки (преместване + запис в журнала) са описани в самия файл.
 
+### Вход с Google (по желание)
+
+Включва се САМО ако и двете променливи са зададени в `.env` на сървъра (иначе бутонът „Вход с Google“ не се
+показва и доставчикът не е регистриран): `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`. Не се слагат като
+`CHANGE_ME` - `deploy.sh` отказва при такъв placeholder; ако не се ползват, редовете се изпускат (или са празни).
+
+В Google Cloud Console (APIs & Services -> Credentials -> OAuth client ID, тип „Web application“):
+
+- Authorized redirect URI: `https://wheelylove.purepoint.bg/api/auth/callback/google`
+- (за локална разработка) `http://localhost:3000/api/auth/callback/google`
+- OAuth consent screen: публикуван в „In production“, с линкове към /privacy и /terms.
+
+След промяна на променливите: `docker compose up -d --force-recreate app` (env се чете при старт).
+
 ## 7. Дневни напомняния (cron)
 
 Таймерът `wheelylove-reminders.timer` вика всеки ден в 08:00 UTC `http://127.0.0.1:5610/api/cron/reminders`

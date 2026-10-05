@@ -8,15 +8,17 @@ import {
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "./email";
+import { googleCredentials } from "./google-auth";
 
-// Self-hosted auth (email + password) in our own Postgres. No third-party
-// identity provider: only Resend is called, for the auth emails.
+// Self-hosted auth (email + password) in our own Postgres. Resend sends the auth
+// emails; Google sign-in is optional (see socialProviders below).
 const appUrl = (process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "").replace(
   /\/+$/,
   ""
 );
 
 function createAuth() {
+  const google = googleCredentials();
   return betterAuth({
     secret: process.env.BETTER_AUTH_SECRET,
     ...(appUrl ? { baseURL: appUrl, trustedOrigins: [appUrl] } : {}),
@@ -46,6 +48,11 @@ function createAuth() {
         await sendExistingAccountEmail({ to: user.email });
       },
     },
+    // Google sign-in only when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are both
+    // set. No trustedProviders and no other linking options: an existing account
+    // is linked only through a Google-verified email AND a locally verified one
+    // (better-auth oauth2/link-account.mjs:138-139).
+    ...(google ? { socialProviders: { google } } : {}),
     emailVerification: {
       sendOnSignUp: true,
       // When an unverified user tries to sign in we send them a fresh link
