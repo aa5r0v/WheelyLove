@@ -7,9 +7,6 @@ import { authClient } from "@/lib/auth-client";
 const MIN_PASSWORD = 10;
 
 function errorText(code: string | null | undefined) {
-  if (code === "USER_ALREADY_EXISTS" || code === "USER_ALREADY_EXISTS_ANOTHER_PROVIDER") {
-    return "Вече има профил с този имейл. Влез с паролата си.";
-  }
   if (code === "PASSWORD_TOO_SHORT" || code === "INVALID_PASSWORD") {
     return `Паролата трябва да е поне ${MIN_PASSWORD} символа.`;
   }
@@ -49,9 +46,11 @@ export default function SignUpPage() {
       <div className="mx-auto flex max-w-md flex-col px-4 py-16 sm:px-6">
         <p className="text-xs font-semibold tracking-[0.3em] text-accent">ПРОВЕРИ ИМЕЙЛА СИ</p>
         <h1 className="font-display mt-3 text-4xl">Почти готово!</h1>
+        {/* One text for every outcome (registered or not): sign-up must not
+            reveal whether the address already has an account. */}
         <p className="mt-4 text-ink/60">
-          Изпратихме ти линк за потвърждение на {email}. Потвърди го, за да можеш да
-          резервираш тренировка.
+          Ако имейлът е свободен, изпратихме ти линк за потвърждение. Потвърди го,
+          за да можеш да резервираш тренировка.
         </p>
         <p className="mt-2 text-sm text-ink/50">
           Писмото не е стигнало? Влез отново с паролата си — ще ти изпратим нов линк.

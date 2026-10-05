@@ -30,12 +30,14 @@ import {
   bookings,
   classSessions,
   instructors,
+  rateLimit,
   sports,
   session as sessionTable,
   user as userTable,
 } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
 import { POST as checkout } from "@/app/api/checkout/route";
+import { POST as authPost } from "@/app/api/auth/[...all]/route";
 import { confirmCashBooking } from "@/app/admin/actions";
 import {
   DEFAULT_PASSWORD,
@@ -182,6 +184,45 @@ describe("email verification gates the account", () => {
       paymentMethod: "cash",
       status: "pending",
     });
+  });
+});
+
+describe("sign-up does not reveal existing emails", () => {
+  function signUpReq(email: string) {
+    return new Request("http://localhost/api/auth/sign-up/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "T", email, password: DEFAULT_PASSWORD }),
+    });
+  }
+
+  it("answers with the same status and body shape for a new and a taken address", async () => {
+    const taken = `${tag}-taken@test.local`;
+    const fresh = `${tag}-fresh@test.local`;
+    createdUserEmails.push(taken, fresh);
+    await signUpUser({ email: taken });
+
+    await db.delete(rateLimit); // keep the sign-up rate limiter out of the way
+    const resFresh = await authPost(signUpReq(fresh));
+    const bodyFresh = await resFresh.json();
+
+    await db.delete(rateLimit);
+    const resTaken = await authPost(signUpReq(taken));
+    const bodyTaken = await resTaken.json();
+
+    expect(resTaken.status).toBe(resFresh.status);
+    // Identical client-visible shape: no session token either way, same user
+    // fields. Only id / timestamps / the address itself may differ.
+    expect(bodyFresh.token).toBeNull();
+    expect(bodyTaken.token).toBeNull();
+    expect(Object.keys(bodyTaken).sort()).toEqual(Object.keys(bodyFresh).sort());
+    expect(Object.keys(bodyTaken.user).sort()).toEqual(
+      Object.keys(bodyFresh.user).sort()
+    );
+    for (const key of Object.keys(bodyTaken.user)) {
+      if (["id", "createdAt", "updatedAt", "email", "name"].includes(key)) continue;
+      expect(bodyTaken.user[key]).toEqual(bodyFresh.user[key]);
+    }
   });
 });
 
