@@ -17,13 +17,20 @@ import WaitlistButton from "./waitlist-button";
 import { Reveal, StaggerGrid } from "@/app/reveal";
 import { sportPosters } from "@/lib/sport-images";
 import { LEVEL_LABELS } from "@/lib/trainings";
+import FocusSession from "@/app/focus-session";
+
+type SP = Record<string, string | string[] | undefined>;
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 
 export default async function SportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<SP>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
   const db = getDb();
 
   const [sport] = await db.select().from(sports).where(eq(sports.slug, slug));
@@ -95,6 +102,13 @@ export default async function SportPage({
     grouped.get(key)!.push(session);
   }
 
+  // ?session= (sign-in return): scroll that session's card into view.
+  const focusRaw = Number(first(sp.session));
+  const focusSessionId =
+    Number.isInteger(focusRaw) && focusRaw > 0 && upcoming.some((s) => s.id === focusRaw)
+      ? focusRaw
+      : null;
+
   return (
     <div>
       <section className="relative overflow-hidden border-b-2 border-accent bg-ink text-paper">
@@ -150,10 +164,20 @@ export default async function SportPage({
         </Link>
         <div className="space-y-10">
           {grouped.size === 0 && (
-            <p className="text-ink/50">
-              Все още няма насрочени часове за тази тренировка.
-            </p>
+            <div>
+              <p className="text-ink/50">
+                Все още няма насрочени часове за тази тренировка. Виж целия
+                график — там са всичките ни часове за следващите две седмици.
+              </p>
+              <Link
+                href="/schedule"
+                className="press font-display mt-4 inline-flex min-h-11 items-center bg-accent px-6 text-sm tracking-wide text-accent-ink"
+              >
+                Виж графика
+              </Link>
+            </div>
           )}
+          {focusSessionId !== null && <FocusSession sessionId={focusSessionId} />}
           {[...grouped.entries()].map(([date, sessionsOnDate]) => (
             <div key={date}>
               <h2 className="font-display mb-4 text-xl capitalize">{date}</h2>
@@ -163,6 +187,7 @@ export default async function SportPage({
                   return (
                     <div
                       key={session.id}
+                      id={`session-${session.id}`}
                       className="card-lift flex flex-col gap-4 border-l-4 border-accent bg-paper-dim p-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>

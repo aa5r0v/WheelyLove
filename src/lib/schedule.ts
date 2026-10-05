@@ -1,7 +1,9 @@
-import { and, asc, eq, gt, gte, inArray, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNull, lt, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports, waitlistEntries } from "@/db/schema";
-import { fromSofiaDateTime, toSofiaDateInput } from "./format";
+import { formatDateLong, formatPrice, formatTime, fromSofiaDateTime, toSofiaDateInput } from "./format";
+import { LEVEL_LABELS, type SportLevel } from "./trainings";
+import type { CardData } from "@/app/schedule/schedule-list";
 
 export const SCHEDULE_DAYS = 14;
 // "Almost full" when this many places or fewer are left AND at least half of
@@ -65,14 +67,9 @@ function filterConditions(f: ScheduleFilters) {
   ];
 }
 
-// Upcoming, non-cancelled sessions of one Sofia day, with free places.
-export async function getDaySessions(
-  date: string,
-  filters: ScheduleFilters = {},
-  now: Date = new Date()
-): Promise<ScheduleSession[]> {
+// The shared session select + waitlist counts behind every schedule-style list.
+async function sessionsWithWaiting(conditions: (SQL | undefined)[]): Promise<ScheduleSession[]> {
   const db = getDb();
-  const { from, to } = dayRange(date);
   const rows = await db
     .select({
       id: classSessions.id,
@@ -91,15 +88,7 @@ export async function getDaySessions(
     .from(classSessions)
     .innerJoin(sports, eq(classSessions.sportId, sports.id))
     .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
-    .where(
-      and(
-        gte(classSessions.startTime, from),
-        lt(classSessions.startTime, to),
-        gt(classSessions.startTime, now),
-        isNull(classSessions.cancelledAt),
-        ...filterConditions(filters)
-      )
-    )
+    .where(and(...conditions))
     .orderBy(asc(classSessions.startTime), asc(classSessions.id));
 
   const ids = rows.map((r) => r.id);
@@ -122,6 +111,64 @@ export async function getDaySessions(
       waitingCount: waiting.get(r.id) ?? 0,
     };
   });
+}
+
+// Upcoming, non-cancelled sessions of one Sofia day, with free places.
+export async function getDaySessions(
+  date: string,
+  filters: ScheduleFilters = {},
+  now: Date = new Date()
+): Promise<ScheduleSession[]> {
+  const { from, to } = dayRange(date);
+  return sessionsWithWaiting([
+    gte(classSessions.startTime, from),
+    lt(classSessions.startTime, to),
+    gt(classSessions.startTime, now),
+    isNull(classSessions.cancelledAt),
+    ...filterConditions(filters),
+  ]);
+}
+
+// All upcoming, non-cancelled sessions of one instructor within the 14-day
+// schedule window (the instructor profile lists them, grouped by day).
+export async function getInstructorUpcomingSessions(
+  instructorSlug: string,
+  now: Date = new Date()
+): Promise<ScheduleSession[]> {
+  const end = dayRange(scheduleDates(now).at(-1)!).to;
+  return sessionsWithWaiting([
+    eq(instructors.slug, instructorSlug),
+    gte(classSessions.startTime, now),
+    lt(classSessions.startTime, end),
+    isNull(classSessions.cancelledAt),
+  ]);
+}
+
+// Maps a schedule row to the card model of ScheduleList; /schedule and the
+// instructor profile share it so the two lists can never diverge.
+export function toCardData(
+  s: ScheduleSession,
+  state: { booked: boolean; waitlistPosition: number | null }
+): CardData {
+  return {
+    id: s.id,
+    timeLabel: formatTime(s.startTime),
+    endLabel: formatTime(s.endTime),
+    dateLabel: formatDateLong(s.startTime),
+    durationMin: s.durationMin,
+    sportName: s.sportName,
+    sportSlug: s.sportSlug,
+    sportColor: s.sportColor,
+    levelLabel: LEVEL_LABELS[s.sportLevel as SportLevel] ?? LEVEL_LABELS.all,
+    instructorName: s.instructorName,
+    instructorSlug: s.instructorSlug,
+    spotsLeft: s.spotsLeft,
+    occupancy: s.occupancy,
+    priceLabel: formatPrice(s.priceCents),
+    waitingCount: s.waitingCount,
+    booked: state.booked,
+    waitlistPosition: state.waitlistPosition,
+  };
 }
 
 // Which of the given days have at least one upcoming session (for the dot under the date).

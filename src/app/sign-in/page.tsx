@@ -10,5 +10,12 @@ export default async function SignInPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  return <SignInForm googleEnabled={isGoogleEnabled()} oauthError={!!sp.error} />;
+  const rawNext = Array.isArray(sp.next) ? sp.next[0] : sp.next;
+  return (
+    <SignInForm
+      googleEnabled={isGoogleEnabled()}
+      oauthError={!!sp.error}
+      next={typeof rawNext === "string" ? rawNext : undefined}
+    />
+  );
 }

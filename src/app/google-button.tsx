@@ -2,17 +2,26 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 
-export default function GoogleButton({ label }: { label: string }) {
+export default function GoogleButton({
+  label,
+  next,
+}: {
+  label: string;
+  // Where to return after Google sign-in; sanitized (only relative paths).
+  next?: string;
+}) {
   const [busy, setBusy] = useState(false);
+  const target = safeNext(next);
 
   async function go() {
     setBusy(true);
     // Sends the browser to Google; on return Better Auth sets the session cookie.
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
-      errorCallbackURL: "/sign-in",
+      callbackURL: target,
+      errorCallbackURL: `/sign-in?next=${encodeURIComponent(target)}`,
     });
     setBusy(false);
   }

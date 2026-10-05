@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import GoogleButton from "@/app/google-button";
+import { safeNext } from "@/lib/safe-next";
 
 const MIN_PASSWORD = 10;
 
@@ -17,7 +18,15 @@ function errorText(code: string | null | undefined) {
   return "Възникна грешка. Опитай отново.";
 }
 
-export default function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
+export default function SignUpForm({
+  googleEnabled,
+  next,
+}: {
+  googleEnabled: boolean;
+  // Where the verification letter should lead after confirming; sanitized.
+  next?: string;
+}) {
+  const target = safeNext(next);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,7 +42,15 @@ export default function SignUpForm({ googleEnabled }: { googleEnabled: boolean }
     }
     setError(null);
     setLoading(true);
-    const { error: err } = await authClient.signUp.email({ name, email, password });
+    const { error: err } = await authClient.signUp.email({
+      name,
+      email,
+      password,
+      // Lands in the verification letter: after confirming the email the user
+      // returns to the page they were booking from (and is signed in — see
+      // autoSignInAfterVerification in src/lib/auth.ts).
+      callbackURL: target,
+    });
     if (err) {
       setError(errorText(err.code));
       setLoading(false);
@@ -57,10 +74,10 @@ export default function SignUpForm({ googleEnabled }: { googleEnabled: boolean }
           Писмото не е стигнало? Влез отново с паролата си — ще ти изпратим нов линк.
         </p>
         <Link
-          href="/"
+          href="/schedule"
           className="font-display mt-8 inline-block bg-ink px-6 py-3 text-sm tracking-wide text-paper"
         >
-          Към началната страница
+          Към графика
         </Link>
       </div>
     );
@@ -129,13 +146,16 @@ export default function SignUpForm({ googleEnabled }: { googleEnabled: boolean }
 
       {googleEnabled && (
         <div className="mt-6">
-          <GoogleButton label="Регистрация с Google" />
+          <GoogleButton label="Регистрация с Google" next={target} />
         </div>
       )}
 
       <p className="mt-6 text-sm text-ink/60">
         Вече имаш профил?{" "}
-        <Link href="/sign-in" className="text-accent-deep underline underline-offset-2">
+        <Link
+          href={`/sign-in?next=${encodeURIComponent(target)}`}
+          className="text-accent-deep underline underline-offset-2"
+        >
           Вход
         </Link>
       </p>

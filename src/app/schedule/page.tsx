@@ -4,15 +4,15 @@ import { asc } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { instructors, sports } from "@/db/schema";
-import { formatDateLong, formatPrice, formatTime } from "@/lib/format";
+import { formatDateLong } from "@/lib/format";
 import {
   getDaySessions,
   getDaysWithSessions,
   getUserSessionState,
   resolveDate,
   scheduleDates,
+  toCardData,
 } from "@/lib/schedule";
-import { LEVEL_LABELS, type SportLevel } from "@/lib/trainings";
 import ScheduleList, { type CardData } from "./schedule-list";
 
 export const dynamic = "force-dynamic";
@@ -73,25 +73,16 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     ? await getUserSessionState(user.id, daySessions.map((s) => s.id))
     : { booked: new Set<number>(), waitlistPosition: new Map<number, number>() };
 
-  const cards: CardData[] = daySessions.map((s) => ({
-    id: s.id,
-    timeLabel: formatTime(s.startTime),
-    endLabel: formatTime(s.endTime),
-    dateLabel: formatDateLong(s.startTime),
-    durationMin: s.durationMin,
-    sportName: s.sportName,
-    sportSlug: s.sportSlug,
-    sportColor: s.sportColor,
-    levelLabel: LEVEL_LABELS[s.sportLevel as SportLevel] ?? LEVEL_LABELS.all,
-    instructorName: s.instructorName,
-    instructorSlug: s.instructorSlug,
-    spotsLeft: s.spotsLeft,
-    occupancy: s.occupancy,
-    priceLabel: formatPrice(s.priceCents),
-    waitingCount: s.waitingCount,
-    booked: state.booked.has(s.id),
-    waitlistPosition: state.waitlistPosition.get(s.id) ?? null,
-  }));
+  const cards: CardData[] = daySessions.map((s) =>
+    toCardData(s, {
+      booked: state.booked.has(s.id),
+      waitlistPosition: state.waitlistPosition.get(s.id) ?? null,
+    })
+  );
+
+  // ?session= (sign-in return): opens that session's bottom sheet.
+  const focusRaw = Number(first(sp.session));
+  const focusSessionId = Number.isInteger(focusRaw) && focusRaw > 0 ? focusRaw : null;
 
   const hasFilter = !!(sportSlug || instructorSlug);
 
@@ -212,7 +203,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               Няма часове за този ден{hasFilter ? " с избраните филтри" : ""}. Опитай друг ден.
             </p>
           ) : (
-            <ScheduleList cards={cards} signedIn={!!user} />
+            <ScheduleList cards={cards} signedIn={!!user} focusSessionId={focusSessionId} />
           )}
         </div>
       </div>

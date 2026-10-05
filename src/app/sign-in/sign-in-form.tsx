@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import GoogleButton from "@/app/google-button";
+import ResendVerification from "@/app/resend-verification";
+import { safeNext } from "@/lib/safe-next";
 
 function errorText(code: string | null | undefined) {
   if (code === "EMAIL_NOT_VERIFIED") {
@@ -19,11 +21,15 @@ function errorText(code: string | null | undefined) {
 export default function SignInForm({
   googleEnabled,
   oauthError,
+  next,
 }: {
   googleEnabled: boolean;
   oauthError: boolean;
+  // Where to go after signing in (the page the guest came from); sanitized.
+  next?: string;
 }) {
   const router = useRouter();
+  const target = safeNext(next);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,18 +38,27 @@ export default function SignInForm({
       ? "Входът с Google не успя. Ако вече имаш профил с този имейл, влез с парола."
       : null
   );
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNeedsVerification(false);
     setLoading(true);
-    const { error: err } = await authClient.signIn.email({ email, password });
+    // callbackURL only matters when the email is unverified: the fresh
+    // verification letter then leads back to the page the user wanted.
+    const { error: err } = await authClient.signIn.email({
+      email,
+      password,
+      callbackURL: target,
+    });
     if (err) {
       setError(errorText(err.code));
+      setNeedsVerification(err.code === "EMAIL_NOT_VERIFIED");
       setLoading(false);
       return;
     }
-    router.push("/");
+    router.push(target);
     router.refresh();
   }
 
@@ -82,6 +97,11 @@ export default function SignInForm({
           />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {needsVerification && email && (
+          <div>
+            <ResendVerification email={email} callbackURL={target} />
+          </div>
+        )}
         <button
           type="submit"
           disabled={loading}
@@ -93,14 +113,17 @@ export default function SignInForm({
 
       {googleEnabled && (
         <div className="mt-6">
-          <GoogleButton label="Вход с Google" />
+          <GoogleButton label="Вход с Google" next={target} />
         </div>
       )}
 
       <div className="mt-6 space-y-2 text-sm text-ink/60">
         <p>
           Нямаш профил?{" "}
-          <Link href="/sign-up" className="text-accent-deep underline underline-offset-2">
+          <Link
+            href={`/sign-up?next=${encodeURIComponent(target)}`}
+            className="text-accent-deep underline underline-offset-2"
+          >
             Регистрация
           </Link>
         </p>

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { getOwnPhone } from "@/app/my-bookings/actions";
+import { usePathname, useSearchParams } from "next/navigation";
+import { getOwnEmail, getOwnPhone } from "@/app/my-bookings/actions";
+import { sessionSignInHref } from "@/lib/safe-next";
+import ResendVerification from "@/app/resend-verification";
 
 export default function BookButton({
   sessionId,
@@ -14,14 +17,19 @@ export default function BookButton({
   signedIn: boolean;
   label?: string;
 }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const page = [pathname, searchParams.toString()].filter(Boolean).join("?");
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   function startBooking() {
     if (!signedIn) {
-      window.location.href = "/sign-in";
+      // Bring the user back to this exact session after they sign in.
+      window.location.href = sessionSignInHref(page, sessionId);
       return;
     }
     setOpen(true);
@@ -48,11 +56,18 @@ export default function BookButton({
       });
       const data = await res.json();
       if (data.ok) {
-        window.location.href = "/booking/success";
-      } else {
-        setError(data.error ?? "Грешка при създаване на резервация.");
-        setLoading(false);
+        const id = data.bookingId;
+        window.location.href =
+          Number.isInteger(id) && id > 0 ? `/booking/success?s=${id}` : "/booking/success";
+        return;
       }
+      setError(data.error ?? "Грешка при създаване на резервация.");
+      // 403 = unverified email: offer the resend flow right here (the email is
+      // needed for the letter, fetched from the session, never from the client).
+      if (res.status === 403) {
+        setVerifyEmail(await getOwnEmail().catch(() => null));
+      }
+      setLoading(false);
     } catch {
       setError("Възникна грешка. Опитайте отново.");
       setLoading(false);
@@ -87,6 +102,11 @@ export default function BookButton({
         Ползваме го само ако часът се промени или отмени.
       </p>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {verifyEmail && (
+        <div className="mt-2">
+          <ResendVerification email={verifyEmail} callbackURL={page} />
+        </div>
+      )}
       <button
         onClick={submit}
         disabled={loading}

@@ -184,5 +184,6 @@ export async function POST(req: Request) {
     instructorName: classSession.instructorName,
     startTime: classSession.startTime,
   });
-  return NextResponse.json({ ok: true });
+  // The id lets /booking/success?s=… show which session was booked.
+  return NextResponse.json({ ok: true, bookingId: booking.id });
 }

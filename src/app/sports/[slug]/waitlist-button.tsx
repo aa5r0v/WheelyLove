@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { joinWaitlist, leaveWaitlist } from "./actions";
+import { sessionSignInHref } from "@/lib/safe-next";
 
 export default function WaitlistButton({
   sessionId,
@@ -16,6 +17,9 @@ export default function WaitlistButton({
   waitingCount: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const page = [pathname, searchParams.toString()].filter(Boolean).join("?");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +36,8 @@ export default function WaitlistButton({
 
   function join() {
     if (!signedIn) {
-      router.push("/sign-in");
+      // Bring the user back to this exact session after they sign in.
+      router.push(sessionSignInHref(page, sessionId));
       return;
     }
     run(joinWaitlist);

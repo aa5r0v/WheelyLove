@@ -79,11 +79,20 @@ const occupancyTone: Record<CardData["occupancy"], string> = {
 export default function ScheduleList({
   cards,
   signedIn,
+  focusSessionId,
 }: {
   cards: CardData[];
   signedIn: boolean;
+  // From ?session=: opens this session's bottom sheet on mount (sign-in return).
+  focusSessionId?: number | null;
 }) {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // ?session= opens that session's sheet straight away (sign-in return): the
+  // id comes from the URL and never changes, so initial state is enough.
+  const [selectedId, setSelectedId] = useState<number | null>(() =>
+    focusSessionId != null && cards.some((c) => c.id === focusSessionId)
+      ? focusSessionId
+      : null
+  );
   const dialogRef = useRef<HTMLDialogElement>(null);
   const selected = cards.find((c) => c.id === selectedId) ?? null;
 

@@ -62,3 +62,10 @@ export async function getOwnPhone(): Promise<string | null> {
   const session = await getSession();
   return session ? getSavedPhone(session.user.id) : null;
 }
+
+// The email of the signed-in user (null when not signed in). Needed where the
+// unverified-email resend flow runs outside /my-bookings (BookButton's 403).
+export async function getOwnEmail(): Promise<string | null> {
+  const session = await getSession();
+  return session ? session.user.email : null;
+}
