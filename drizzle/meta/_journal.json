@@ -20,7 +20,7 @@
       "idx": 2,
       "version": "7",
       "when": 1791184230934,
-      "tag": "0002_drop_stripe",
+      "tag": "0002_payment_default_cash",
       "breakpoints": true
     },
     {

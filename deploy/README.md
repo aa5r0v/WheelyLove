@@ -134,6 +134,13 @@ Cloudflare: DNS запис `A wheelylove -> 164.138.216.72` (Proxied) и SSL/TLS
 
 ## 6. Пускане на версия (deploy) и връщане
 
+**ВНИМАНИЕ - първи release на новия стек:** `deploy.sh` НЕ инсталира nginx конфигурацията,
+папката `/srv/wheelylove/uploads` и останалата извън-Docker настройка - прави го само
+`install.sh`. Затова за ТОЗИ първи release редът е задължителен:
+`install.sh` (стъпка 5) ПРЕДИ първия `deploy.sh` - иначе сайтът тръгва без vhost и без
+папка за качванията. При по-късни releases `deploy.sh` само сравнява nginx/firewall
+файловете с инсталираните и предупреждава при разлика (вж. стъпка 8 в самия скрипт).
+
 ```bash
 bash /srv/wheelylove/deploy/deploy.sh /root/release.tar.gz
 ```
@@ -160,6 +167,17 @@ bash /srv/wheelylove/deploy/rollback.sh <tag>      # към конкретна (
 
 Резервен вариант без билд на VPS: `deploy.sh --image-tar app.tar migrate.tar release.tar.gz`, като образите са
 записани с `docker save` под имената `wheelylove-app:prebuilt` и `wheelylove-migrate:prebuilt`.
+
+### Отложени миграции (deferred)
+
+`deploy.sh` прилага ВСИЧКО в `./drizzle` (през `drizzle-kit migrate` и журнала
+`drizzle/meta/_journal.json`). Миграции, които трият колони, се държат ВНЕ от тази папка -
+в `deploy/deferred-migrations/` - и не се прилагат с текущия release:
+
+- **`0004_drop_stripe_columns.sql`** - трие остарелите Stripe колони на `bookings`.
+  Пуска се чак с ВТОРИЯ release на новия стек: дотогава колоните остават, за да може
+  първият release да се върне към версия на приложението, която още ги чете.
+  Точните стъпки (преместване + запис в журнала) са описани в самия файл.
 
 ## 7. Дневни напомняния (cron)
 
