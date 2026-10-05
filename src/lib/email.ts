@@ -82,7 +82,29 @@ function details(rows: [string, string][]) {
     </table>`;
 }
 
-async function sendEmail(params: { to: string; subject: string; html: string }) {
+// The recipient is never logged in full: first character + domain is enough
+// to correlate with Resend's dashboard without leaking the address into logs.
+function maskEmail(email: string) {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "***";
+  return `${local[0]}***@${domain}`;
+}
+
+// kind "auth": verification / password-reset letters. These THROW on failure so
+// that Better Auth can tell the client the letter was not sent (the
+// /send-verification-email endpoint awaits the sender directly). Note: the
+// sign-up / sign-in dispatch inside better-auth runs through
+// runInBackgroundOrAwait, which catches and logs such errors itself - there the
+// throw only improves the server log, it cannot reach the HTTP response.
+// kind "transactional": booking letters - a failed send must not fail the
+// booking itself, so the error is logged (with the marker) and swallowed.
+async function sendEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  kind: "auth" | "transactional";
+  type: string;
+}) {
   const { data, error } = await getResend().emails.send({
     from: FROM,
     replyTo: STUDIO_EMAIL,
@@ -91,7 +113,14 @@ async function sendEmail(params: { to: string; subject: string; html: string }) 
     html: params.html,
   });
   if (error) {
-    console.error("Failed to send email:", error);
+    // Clear marker for log searches; no letter content, no full address.
+    console.error(
+      `[email:FAILED] ${params.type} to=${maskEmail(params.to)}`,
+      error
+    );
+    if (params.kind === "auth") {
+      throw new Error(`Resend rejected the ${params.type} email.`);
+    }
   }
   return data;
 }
@@ -108,6 +137,8 @@ export async function sendBookingConfirmationEmail(info: BookingEmailInfo) {
 
   await sendEmail({
     to: info.to,
+    kind: "transactional",
+    type: "booking-confirmation",
     subject: `Резервацията ти е приета: ${info.sportName} — ${dateStr}`,
     html: layout({
       heading: "Резервацията ти е приета 🎉",
@@ -131,6 +162,8 @@ export async function sendBookingReminderEmail(info: BookingEmailInfo) {
 
   await sendEmail({
     to: info.to,
+    kind: "transactional",
+    type: "booking-reminder",
     subject: `Напомняне: ${info.sportName} — ${dateStr}`,
     html: layout({
       heading: "Очакваме те скоро! 🚴",
@@ -158,6 +191,8 @@ export async function sendWaitlistSpotOpenEmail(info: {
 
   await sendEmail({
     to: info.to,
+    kind: "transactional",
+    type: "waitlist-spot-open",
     subject: `Освободи се място: ${info.sportName} — ${dateStr}`,
     html: layout({
       heading: "Освободи се място!",
@@ -189,6 +224,8 @@ export async function sendBookingCancelledEmail(info: BookingCancelledInfo) {
 
   await sendEmail({
     to: info.to,
+    kind: "transactional",
+    type: "booking-cancelled",
     subject: sessionCancelled
       ? `Тренировката е отменена: ${info.sportName} — ${dateStr}`
       : `Отказана резервация: ${info.sportName} — ${dateStr}`,
@@ -217,6 +254,8 @@ export async function sendBookingCancelledEmail(info: BookingCancelledInfo) {
 export async function sendVerificationEmail(info: { to: string; url: string }) {
   await sendEmail({
     to: info.to,
+    kind: "auth",
+    type: "verification",
     subject: "Потвърди имейла си в WheelyLove",
     html: layout({
       heading: "Добре дошли в WheelyLove! 🎉",
@@ -234,6 +273,8 @@ export async function sendVerificationEmail(info: { to: string; url: string }) {
 export async function sendPasswordResetEmail(info: { to: string; url: string }) {
   await sendEmail({
     to: info.to,
+    kind: "auth",
+    type: "password-reset",
     subject: "Задай нова парола в WheelyLove",
     html: layout({
       heading: "Смяна на паролата",
