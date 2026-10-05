@@ -58,6 +58,13 @@ const CLIENT_NAMES = [
   "Цветелина Рангелова", "Владимир Генчев", "Моника Тодорова", "Красимир Данчев", "Надежда Пенева",
 ];
 
+function demoEmails(): string[] {
+  return [
+    ...DEMO_INSTRUCTORS.map((d) => `${d.local}@${DEMO_DOMAIN}`),
+    ...CLIENT_NAMES.map((_, i) => `client${String(i + 1).padStart(2, "0")}@${DEMO_DOMAIN}`),
+  ];
+}
+
 export const DEMO_CLIENT_COUNT = CLIENT_NAMES.length;
 export const DEMO_WEEKS_BACK = 4;
 export const DEMO_WEEKS_FORWARD = 4;
@@ -236,6 +243,8 @@ export async function seedDemo(opts: {
             durationMin: plan.durationMin,
             capacity: plan.capacity,
             priceCents: plan.priceCents,
+            // Inactive: "Генерирай" must not extend the demo into the live schedule.
+            active: false,
           })
           .returning({ id: sessionTemplates.id });
         report.templatesCreated++;
@@ -366,10 +375,11 @@ export async function removeDemo(opts: { apply: boolean }): Promise<RemoveReport
       users: 0,
       instructors: 0,
     };
+    // Exactly the listed demo instructors / users - never a prefix match.
     const demoInstructors = await tx
       .select({ id: instructors.id })
       .from(instructors)
-      .where(like(instructors.slug, `${DEMO_SLUG_PREFIX}%`));
+      .where(inArray(instructors.slug, DEMO_INSTRUCTORS.map((d) => d.slug)));
     const insIds = demoInstructors.map((i) => i.id);
     const demoEmail = `%@${DEMO_DOMAIN}`;
 
@@ -420,7 +430,9 @@ export async function removeDemo(opts: { apply: boolean }): Promise<RemoveReport
     }
 
     // Users cascade to their sessions/accounts; instructors.user_id is set null.
-    report.users = (await tx.delete(user).where(like(user.email, demoEmail)).returning({ id: user.id })).length;
+    report.users = (
+      await tx.delete(user).where(inArray(user.email, demoEmails())).returning({ id: user.id })
+    ).length;
     if (insIds.length) {
       report.instructors = (
         await tx.delete(instructors).where(inArray(instructors.id, insIds)).returning({ id: instructors.id })

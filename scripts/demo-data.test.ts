@@ -33,6 +33,7 @@ import {
 import { toSofiaTimeInput } from "../src/lib/format";
 import { signInCookie } from "../src/lib/test-helpers";
 import { getAuth } from "../src/lib/auth";
+import { generateSessions } from "../src/lib/schedule-generator";
 import { DEMO_DOMAIN, removeDemo, seedDemo } from "./demo-data";
 
 const db = getDb();
@@ -319,6 +320,16 @@ describe("seed-demo", () => {
     }
   });
 
+  it("demo templates are inactive: the generator creates nothing for them", async () => {
+    const ids = await demoInstructorIds();
+    const tpls = await db.select().from(sessionTemplates).where(inArray(sessionTemplates.instructorId, ids));
+    expect(tpls).toHaveLength(10);
+    expect(tpls.every((t) => t.active === false)).toBe(true);
+    const r = await generateSessions({ now: NOW, templateIds: tpls.map((t) => t.id) });
+    expect(r).toEqual({ created: 0, planned: 0 });
+    expect((await counts()).sessions).toBe(80);
+  });
+
   it("is idempotent: a second --apply creates nothing and changes nothing", async () => {
     const before = await counts();
     const again = await seedDemo({ apply: true, password: PASSWORD, now: NOW });
@@ -376,6 +387,17 @@ describe("remove-demo", () => {
     await expect(removeDemo({ apply: true })).rejects.toThrow(/real booking/);
     expect(await counts()).toEqual(before);
     await db.delete(bookings).where(eq(bookings.id, rb.id));
+  });
+
+  it("an instructor with a demo- slug that is NOT in the demo list survives", async () => {
+    const [x] = await db.insert(instructors).values({ slug: `demo-real-${tag}`, name: "Real2" }).returning();
+    try {
+      await removeDemo({ apply: true });
+      expect(await db.select().from(instructors).where(eq(instructors.id, x.id))).toHaveLength(1);
+    } finally {
+      await db.delete(instructors).where(eq(instructors.id, x.id));
+    }
+    await seedDemo({ apply: true, password: PASSWORD, now: NOW });
   });
 
   it("--apply removes every demo row and leaves real data untouched", async () => {
