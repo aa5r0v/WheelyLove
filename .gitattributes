@@ -1,0 +1,6 @@
+# Scripts and configs run on Linux: always LF (autocrlf on Windows would break
+# bash shebangs and the Dockerfile). deploy/.gitattributes repeats this for the
+# deploy/ directory alone; this root file also covers scripts outside deploy/.
+*.sh text eol=lf
+Dockerfile text eol=lf
+deploy/** text eol=lf

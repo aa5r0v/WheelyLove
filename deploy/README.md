@@ -11,7 +11,7 @@ PostgreSQL 14, OpenVPN към клиентската мрежа, netdata). Ни�
 
 ```
 Интернет -> Cloudflare -> nginx (443, само Cloudflare IP) -> 127.0.0.1:5610 -> [app]  --wl-internal (затворена мрежа)--> [db]
-                                                                                  \--wl-egress (само изходящ HTTPS, филтриран)--> Clerk, Stripe, Resend, Twilio, R2
+                                                                                  \--wl-egress (само изходящ HTTPS, филтриран)--> Resend (имейли)
 ```
 
 | Решение | Защо (просто) |
@@ -19,7 +19,7 @@ PostgreSQL 14, OpenVPN към клиентската мрежа, netdata). Ни�
 | Два контейнера `app` и `db` в проект `wheelylove`, папка `/srv/wheelylove` | Всичко на едно място; не се смесва с другите проекти. |
 | Порт `127.0.0.1:5610` (само loopback) | Проверено на VPS: 5610 е свободен; достъпен е само за nginx на същата машина, не от интернет. |
 | Мрежа `wl-internal` с `internal: true` | `db` няма никакъв маршрут навън и няма публикуван порт. Само `app` го вижда. |
-| Мрежа `wl-egress` (172.28.61.0/24) само за `app` | `app` трябва да вика Clerk/Stripe/Resend/Twilio/R2. Тази мрежа е филтрирана от защитната стена (т. 4). |
+| Мрежа `wl-egress` (172.28.61.0/24) само за `app` | `app` трябва да вика само Resend (имейли). Тази мрежа е филтрирана от защитната стена (т. 4). |
 | Подмрежи 172.28.61.0/24 и 172.28.62.0/24 | Проверено: заети са 172.17-172.20/16 (Docker), 10.10.0.0/16 + 10.50.0.0/24 + 172.16.91.0/24 + 192.168.102.0/24 + 77.85.202.0/26 (OpenVPN tun0). 172.28.61/62 не се пресичат с нищо. |
 | Loop диск 6 GB (`/srv/wheelylove.img`) | Файл с фиксиран размер, монтиран като отделен диск (`nosuid,nodev`). Данните на проекта НЕ МОГАТ да запълнят главния диск. |
 | Ротация на логовете (10 MB x 3 на контейнер) | Логовете на Docker не растат безкрайно. |
@@ -39,9 +39,10 @@ PostgreSQL 14, OpenVPN към клиентската мрежа, netdata). Ни�
 | `deploy/firewall/wheelylove-firewall.sh` + `deploy/systemd/wheelylove-firewall.service` | Собствени iptables вериги, само за мрежите на WheelyLove. |
 | `deploy/nginx/*` | vhost, зони за ограничаване на заявките, общи proxy настройки. |
 | `deploy/systemd/wheelylove-reminders.*` | Дневен таймер 08:00 UTC за `/api/cron/reminders`. |
-| `deploy/cron/wheelylove-backup`, `deploy/scripts/backup.sh` | Нощен `pg_dump`, 14 дни ротация. |
+| `deploy/cron/wheelylove-backup`, `deploy/scripts/backup.sh` | Нощен `pg_dump` + tar на качванията, 14 дни ротация. |
 | `deploy/scripts/lib.sh`, `cron-reminders.sh` | Помощни. |
-| `deploy/import-from-neon.md` | Пренос на данните от Neon. |
+| `deploy/import-from-neon.md` | Еднократен (по избор) импорт на спортове/инструктори/часове/галерия от старата Neon база. |
+| `deploy/migrate-r2-to-local.md`, `scripts/migrate-r2-to-local.ts` | Еднократна миграция на снимките/видеото от Cloudflare R2 към локалния диск. |
 
 ## 3. Ресурси (приблизителни оценки; ще се потвърдят с `docker stats` след първото пускане)
 
@@ -125,13 +126,11 @@ bash /root/wl-src/deploy/install.sh
 
 После:
 ```bash
-nano /srv/wheelylove/.env                # сменете всяко CHANGE_ME (POSTGRES_PASSWORD и CRON_SECRET са вече генерирани)
+nano /srv/wheelylove/.env                # сменете всяко CHANGE_ME (POSTGRES_PASSWORD, CRON_SECRET и BETTER_AUTH_SECRET са вече генерирани)
 ls -l /srv/wheelylove/.env               # очаквано: -rw------- root root
 ```
 Cloudflare: DNS запис `A wheelylove -> 164.138.216.72` (Proxied) и SSL/TLS режим "Full (strict)" (иначе 80->443
-пренасочването върти в кръг). Ако ползвате Clerk production instance, добавете и неговите DNS записи (`clerk.` и т.н.,
-"DNS only") според указанията на Clerk. Stripe webhook: `https://wheelylove.purepoint.bg/api/webhooks/stripe`; в
-Cloudflare WAF добавете изключение за този път, ако Stripe получава 403.
+пренасочването върти в кръг). Входът е собствен (Better Auth в нашия Postgres) - няма външни auth услуги за настройване.
 
 ## 6. Пускане на версия (deploy) и връщане
 
@@ -155,6 +154,10 @@ bash /srv/wheelylove/deploy/rollback.sh <tag>      # към конкретна (
 обратно съвместими (първо добавяне, после махане). Ако миграция трябва да се отмени: възстановете архива
 `pre-deploy-*.dump` (т. 8).
 
+Първи админ: регистрирайте се в сайта с имейла на студиото, после на вашия компютър задайте ролята:
+`npm run set-admin -- <имейл>` (виж `scripts/set-admin.ts`; работи срещу `.env.local` с DATABASE_URL към
+производствената база през SSH тунел, или пуснете същата команда в контейнера).
+
 Резервен вариант без билд на VPS: `deploy.sh --image-tar app.tar migrate.tar release.tar.gz`, като образите са
 записани с `docker save` под имената `wheelylove-app:prebuilt` и `wheelylove-migrate:prebuilt`.
 
@@ -172,39 +175,58 @@ systemctl start wheelylove-reminders.service && journalctl -u wheelylove-reminde
 
 ## 8. Архиви
 
-Нощно в 02:17 (`/etc/cron.d/wheelylove-backup`) се прави `pg_dump` (custom формат) в `/srv/wheelylove/backups`,
-14 дни ротация; `deploy.sh` прави и `pre-deploy-*.dump` преди всяка миграция.
+Нощно в 02:17 (`/etc/cron.d/wheelylove-backup`) се прави `pg_dump` (custom формат) на базата И `tar.gz` на
+`/srv/wheelylove/uploads` (снимки/видео от галерията) в `/srv/wheelylove/backups`, 14 дни ротация;
+`deploy.sh` прави и `pre-deploy-*` архиви преди всяка миграция.
 
 ```bash
-bash /srv/wheelylove/deploy/scripts/backup.sh && ls -lh /srv/wheelylove/backups | tail -3      # ръчен архив
-# Възстановяване (ПРЕЗАПИСВА текущите данни! първо спрете app: docker stop wheelylove-app):
+bash /srv/wheelylove/deploy/scripts/backup.sh && ls -lh /srv/wheelylove/backups | tail -4      # ръчен архив
+# Възстановяване на базата (ПРЕЗАПИСВА текущите данни! първо спрете app: docker stop wheelylove-app):
 docker exec -i wheelylove-db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --no-acl' < /srv/wheelylove/backups/<файл>.dump
+# Възстановяване на качванията:
+tar -xzf /srv/wheelylove/backups/<файл>-uploads.tar.gz -C /srv/wheelylove
 docker start wheelylove-app
 ```
+Внимание: uploads растат с галерията и седят на същия 6 GB loop диск - следете `df -h /srv/wheelylove`.
 Архивите са на същия сървър и същия loop диск - при загуба на машината ги губите. Добавете копие извън сървъра
-(напр. `rclone` към R2) - не е включено в този пакет.
+(напр. `rclone` към друго хранилище) - не е включено в този пакет.
+
+## 8а. Качвания на локален диск (няма вече R2)
+
+Снимките и видеата от галерията се записват от приложението в `/data/uploads` (bind mount на
+`/srv/wheelylove/uploads`, собственик uid 10001 = app потребителя) и nginx ги раздава директно от диска на
+`/uploads/<uuid>.<ext>` - заявката изобщо не минава през Node. Приложението приема само JPEG/PNG/WebP до 8 MB и
+MP4 до 50 MB (проверка по magic bytes, UUID име на файла); nginx служи само разширенията jpg/jpeg/png/webp/mp4
+(всичко друго е 404) с `Content-Security-Policy: default-src 'none'; sandbox`, без autoindex, с дълъг cache.
+
+**Компромисът с големината на заявките:** глобално nginx позволява само 2 MB тяло на заявка (достатъчно за форми
+и JSON, дребно поле за атака). Единствено `location /admin/` позволява 55 MB, защото качването в галерията е
+server action към страницата `/admin/gallery` (50 MB видео + multipart overhead). Това е приемливо, защото до
+server actions в `/admin/` стигат само влезнали администратори (ролята се проверява от самото действие), а
+приложението повторно валидира типа и големината на файла. Ако някой ден качването стане публично, този лимит
+трябва да се премахне и да се ползва директен S3-подобен upload.
 
 ## 9. nginx, CSP, ограничаване на заявките
 
 - vhost: 80 -> 301 към https; 443 със сертификата `/etc/ssl/cloudflare/purepoint-origin.crt` (покрива `*.purepoint.bg`);
-  `include /etc/nginx/cloudflare-allow.conf` (проверено: файлът и сертификатите съществуват);
-  `client_max_body_size 10m` (приложението ограничава качванията до 8 MB); proxy таймаути 60 s (Cloudflare режe на ~100 s).
+  `include /etc/nginx/cloudflare-allow.conf` (проверено: файлът и сертификатите съществувват);
+  `client_max_body_size 2m` глобално и `55m` само за `/admin/` (виж т. 8а); proxy таймаути 60 s (Cloudflare реже на ~100 s).
 - Ограничаване: `/api/` 30 заявки/мин на клиент (burst 20); server actions (заявки с хедър `Next-Action`) 60/мин
-  (burst 30); ключът е `CF-Connecting-IP`. Stripe webhook е без ограничение (подписът се проверява от приложението).
-- CSP е съвместим с Clerk + Stripe и е включен като **Report-Only** (нищо не се чупи; нарушенията се виждат в конзолата на браузъра).
-  След около седмица чисто ползване (вход, регистрация, резервация, плащане, админ галерия) сменете реда
-  `Content-Security-Policy-Report-Only` с `Content-Security-Policy` във `deploy/nginx/wheelylove.conf`, после нов release и повторно `install.sh` (то прави `nginx -t` преди reload).
-  `'unsafe-inline'` за скриптове е нужен на Next.js без nonce. Ако Clerk production ползва `clerk.<домейн>`, сверете двата
-  записа `clerk.wheelylove.purepoint.bg` в CSP.
-- Ако искате собствено ограничаване на логин: Clerk има свое; тук не се дублира.
+  (burst 30); ключът е реалният клиентски IP от `CF-Connecting-IP`. Входът/регистрацията/смената на парола имат и
+  собствено ограничение в приложението (Better Auth, със storage в базата - виж `.env` и кода).
+- CSP е само `'self'` вече (входът е собствен, няма Stripe/Clerk/външни скриптове) и е включен като **Report-Only**
+  (нищо не се чупи; нарушенията се виждат в конзолата на браузъра). След около седмица чисто ползване (вход,
+  регистрация, резервация, админ галерия) сменете реда `Content-Security-Policy-Report-Only` с
+  `Content-Security-Policy` във `deploy/nginx/wheelylove.conf`, после нов release и повторно `install.sh` (то прави
+  `nginx -t` преди reload). `'unsafe-inline'` за скриптове е нужен на Next.js без nonce.
 
 ## 10. Собствен домейн (по-късно)
 
 1. Във `deploy/nginx/wheelylove.conf` добавете домейна към ДВЕТЕ `server_name` (има коментар).
 2. Нужен е Cloudflare origin сертификат за новия домейн (`*.purepoint.bg` не го покрива) - добавете втори
    `ssl_certificate` блок или нов сертификат за двата домейна.
-3. Сменете `NEXT_PUBLIC_APP_URL` и Clerk/Stripe настройките в `.env`, ново `deploy.sh` (адресът е вграден при билда).
-4. Обновете CSP записите за Clerk. Пуснете `install.sh` повторно (идемпотентен; прави `nginx -t` преди reload).
+3. Сменете `NEXT_PUBLIC_APP_URL` и `BETTER_AUTH_URL` в `.env` (двете са равни), ново `deploy.sh` (адресът е вграден при билда).
+4. Пуснете `install.sh` повторно (идемпотентен; прави `nginx -t` преди reload).
 
 ## 11. Рискове за съществуващите услуги (какво проверих и какво остава)
 
