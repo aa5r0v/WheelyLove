@@ -31,6 +31,7 @@ import {
   classSessions,
   instructors,
   sports,
+  session as sessionTable,
   user as userTable,
 } from "@/db/schema";
 import { getAuth } from "@/lib/auth";
@@ -41,6 +42,7 @@ import {
   deleteUser,
   signInCookie,
   signUpUser,
+  verifyUserEmail,
 } from "@/lib/test-helpers";
 
 const tag = `auth-${Date.now()}`;
@@ -89,16 +91,63 @@ afterAll(async () => {
   for (const email of createdUserEmails) await deleteUser(email);
 });
 
-describe("email verification gates booking", () => {
-  it("sign-up leaves the email unverified and blocks booking with 403", async () => {
-    const email = `${tag}-a@test.local`;
+describe("email verification gates the account", () => {
+  it("an unverified user cannot sign in and gets a fresh link instead", async () => {
+    const email = `${tag}-uv@test.local`;
     createdUserEmails.push(email);
     const user = await signUpUser({ email });
 
     expect(user.emailVerified).toBe(false);
+    // sendOnSignUp dispatched the first verification email...
     expect(mocks.verification).toHaveBeenCalledTimes(1);
 
+    // ...and sign-up created no session (no auto sign-in while unverified).
+    const sessions = await db
+      .select({ id: sessionTable.id })
+      .from(sessionTable)
+      .where(eq(sessionTable.userId, user.id));
+    expect(sessions).toHaveLength(0);
+
+    // The blocked sign-in attempt: 403 EMAIL_NOT_VERIFIED, no cookie.
+    await expect(
+      getAuth().api.signInEmail({
+        body: { email, password: DEFAULT_PASSWORD },
+        headers: new Headers(),
+      })
+    ).rejects.toMatchObject({ statusCode: 403, body: { code: "EMAIL_NOT_VERIFIED" } });
+
+    // sendOnSignIn dispatched a NEW link together with the rejection.
+    expect(mocks.verification).toHaveBeenCalledTimes(2);
+
+    // The fresh link lives 24 hours (expiresIn: 86400), like the email says.
+    const url = (mocks.verification.mock.calls.at(-1) as unknown as [{ url: string }])[0]
+      .url;
+    const token = new URL(url).searchParams.get("token")!;
+    expect(token).toBeTruthy();
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1]!, "base64url").toString()
+    );
+    expect(payload.exp - payload.iat).toBe(86400);
+  });
+
+  it("the booking endpoint still refuses a session whose email is unverified (403)", async () => {
+    // With requireEmailVerification an unverified user cannot obtain a session
+    // anymore; this exercises the app-level gate independently of that: the
+    // session is created while verified, then verification is flipped off.
+    const email = `${tag}-gate@test.local`;
+    createdUserEmails.push(email);
+    const user = await signUpUser({ email });
+    await db
+      .update(userTable)
+      .set({ emailVerified: true })
+      .where(eq(userTable.id, user.id));
+
     const cookie = await signInCookie(email);
+    await db
+      .update(userTable)
+      .set({ emailVerified: false })
+      .where(eq(userTable.id, user.id));
+
     const res = await checkout(
       req({ sessionId, phone: "0888123456" }, cookie)
     );
@@ -142,7 +191,12 @@ describe("password reset", () => {
 
   beforeAll(async () => {
     createdUserEmails.push(email);
-    await signUpUser({ email });
+    const user = await signUpUser({ email });
+    // requireEmailVerification: only a verified account can sign in at all.
+    await db
+      .update(userTable)
+      .set({ emailVerified: true })
+      .where(eq(userTable.id, user.id));
   });
 
   it("does not reveal whether the email exists", async () => {
@@ -191,6 +245,40 @@ describe("password reset", () => {
       })
     ).rejects.toThrow();
   });
+
+  it("a completed reset invalidates the old session cookie", async () => {
+    const email = `${tag}-reset-old@test.local`;
+    createdUserEmails.push(email);
+    const user = await signUpUser({ email });
+    await db
+      .update(userTable)
+      .set({ emailVerified: true })
+      .where(eq(userTable.id, user.id));
+    const oldCookie = await signInCookie(email);
+
+    const auth = getAuth();
+    await auth.api.requestPasswordReset({
+      body: { email, redirectTo: "/reset-password" },
+      headers: new Headers(),
+    });
+    const url = (mocks.reset.mock.calls.at(-1) as unknown as [{ url: string }])[0]
+      .url;
+    const token = new URL(url).pathname.split("/").pop()!;
+    await auth.api.resetPassword({
+      body: { newPassword: "reset-again-654321", token },
+      headers: new Headers(),
+    });
+
+    // The pre-reset cookie no longer authenticates (revokeSessionsOnPasswordReset):
+    // a request with it is treated as unauthorized.
+    const res = await checkout(req({ sessionId, phone: "0888123456" }, oldCookie));
+    expect(res.status).toBe(401);
+    const [staleSession] = await db
+      .select({ id: sessionTable.id })
+      .from(sessionTable)
+      .where(eq(sessionTable.userId, user.id));
+    expect(staleSession).toBeUndefined();
+  });
 });
 
 describe("admin role", () => {
@@ -198,6 +286,7 @@ describe("admin role", () => {
     const email = `${tag}-user@test.local`;
     createdUserEmails.push(email);
     await signUpUser({ email });
+    await verifyUserEmail(email);
     const cookie = await signInCookie(email);
     headerState.headers.set("cookie", cookie);
 
@@ -210,6 +299,7 @@ describe("admin role", () => {
     const email = `${tag}-admin@test.local`;
     createdUserEmails.push(email);
     await signUpUser({ email });
+    await verifyUserEmail(email);
     await db.update(userTable).set({ role: "admin" }).where(eq(userTable.email, email));
     const cookie = await signInCookie(email);
     headerState.headers.set("cookie", cookie);

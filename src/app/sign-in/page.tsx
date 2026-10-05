@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
 function errorText(code: string | null | undefined) {
+  if (code === "EMAIL_NOT_VERIFIED") {
+    return "Потвърди имейла си — изпратихме ти нов линк. Провери пощата си (и папка „Спам“).";
+  }
   if (code === "INVALID_EMAIL_OR_PASSWORD" || code === "USER_NOT_FOUND") {
     return "Грешен имейл или парола.";
   }
