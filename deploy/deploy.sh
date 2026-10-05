@@ -42,8 +42,8 @@ require_mount
 [ -f "$WL_ENV" ] || die "$WL_ENV missing - run install.sh"
 [ -f "$WL_TAG_ENV" ] || die "$WL_TAG_ENV missing - run install.sh"
 [ "$(stat -c %a "$WL_ENV")" = "600" ] || die "$WL_ENV must be mode 600"
-if grep -q 'CHANGE_ME' "$WL_ENV"; then
-  grep -n 'CHANGE_ME' "$WL_ENV" | sed 's/=.*/=.../' >&2
+if grep -qE '^[^#]*CHANGE_ME' "$WL_ENV"; then
+  grep -nE '^[^#]*CHANGE_ME' "$WL_ENV" | sed 's/=.*/=.../' >&2
   die "placeholders (CHANGE_ME) still in $WL_ENV - fill them in first"
 fi
 docker info >/dev/null 2>&1 || die "docker is not running"
