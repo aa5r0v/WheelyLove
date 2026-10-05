@@ -10,6 +10,7 @@ import {
   varchar,
   pgEnum,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
 
 export const bookingStatusEnum = pgEnum("booking_status", [
@@ -49,22 +50,53 @@ export const instructors = pgTable("instructors", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const classSessions = pgTable("class_sessions", {
-  id: serial("id").primaryKey(),
-  sportId: integer("sport_id")
-    .notNull()
-    .references(() => sports.id, { onDelete: "restrict" }),
-  instructorId: integer("instructor_id")
-    .notNull()
-    .references(() => instructors.id, { onDelete: "restrict" }),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  capacity: integer("capacity").notNull().default(12),
-  bookedCount: integer("booked_count").notNull().default(0),
-  priceCents: integer("price_cents").notNull(),
-  cancelledAt: timestamp("cancelled_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+// Weekly recurring template. Concrete class_sessions are generated from it (see
+// src/lib/schedule-generator.ts). weekday is ISO: 1 = Monday ... 7 = Sunday;
+// startTime is a wall-clock "HH:MM" in Europe/Sofia.
+export const sessionTemplates = pgTable(
+  "session_templates",
+  {
+    id: serial("id").primaryKey(),
+    sportId: integer("sport_id")
+      .notNull()
+      .references(() => sports.id, { onDelete: "restrict" }),
+    instructorId: integer("instructor_id")
+      .notNull()
+      .references(() => instructors.id, { onDelete: "restrict" }),
+    weekday: integer("weekday").notNull(),
+    startTime: varchar("start_time", { length: 5 }).notNull(),
+    durationMin: integer("duration_min").notNull(),
+    capacity: integer("capacity").notNull().default(12),
+    priceCents: integer("price_cents").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [check("session_templates_weekday_chk", sql`${t.weekday} between 1 and 7`)]
+);
+
+export const classSessions = pgTable(
+  "class_sessions",
+  {
+    id: serial("id").primaryKey(),
+    sportId: integer("sport_id")
+      .notNull()
+      .references(() => sports.id, { onDelete: "restrict" }),
+    instructorId: integer("instructor_id")
+      .notNull()
+      .references(() => instructors.id, { onDelete: "restrict" }),
+    startTime: timestamp("start_time").notNull(),
+    endTime: timestamp("end_time").notNull(),
+    capacity: integer("capacity").notNull().default(12),
+    bookedCount: integer("booked_count").notNull().default(0),
+    priceCents: integer("price_cents").notNull(),
+    cancelledAt: timestamp("cancelled_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    templateId: integer("template_id").references(() => sessionTemplates.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [uniqueIndex("class_sessions_template_start_idx").on(t.templateId, t.startTime)]
+);
 
 export const bookings = pgTable(
   "bookings",

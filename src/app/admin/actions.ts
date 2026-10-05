@@ -8,6 +8,7 @@ import {
   classSessions,
   galleryItems,
   instructors,
+  sessionTemplates,
   sports,
 } from "@/db/schema";
 import { isAdmin } from "@/lib/admin";
@@ -15,7 +16,13 @@ import { uploadToStorage, deleteFromStorage } from "@/lib/storage";
 import { cancelBookingAndNotify } from "@/lib/bookings";
 import { notifyWaitlist } from "@/lib/waitlist";
 import { fromSofiaDateTime } from "@/lib/format";
-import { parseLevel, parseOptionalEuroToCents, parseOptionalInt } from "@/lib/trainings";
+import {
+  parseLevel,
+  parseOptionalEuroToCents,
+  parseOptionalInt,
+  parseTemplateForm,
+} from "@/lib/trainings";
+import { generateSessions } from "@/lib/schedule-generator";
 
 async function assertAdmin() {
   if (!(await isAdmin())) {
@@ -237,4 +244,51 @@ export async function deleteGalleryItem(id: number) {
   if (deleted) await deleteFromStorage(deleted.url);
   revalidatePath("/admin/gallery");
   revalidatePath("/gallery");
+}
+
+// ------------------------------------------------------ weekly template (schedule)
+
+async function readTemplateForm(formData: FormData) {
+  const db = getDb();
+  const [sport] = await db
+    .select({
+      defaultDurationMin: sports.defaultDurationMin,
+      defaultCapacity: sports.defaultCapacity,
+      defaultPriceCents: sports.defaultPriceCents,
+    })
+    .from(sports)
+    .where(eq(sports.id, Number(formData.get("sportId"))));
+  if (!sport) throw new Error("Тренировката не съществува.");
+  return parseTemplateForm(formData, sport);
+}
+
+export async function createTemplate(formData: FormData) {
+  await assertAdmin();
+  await getDb().insert(sessionTemplates).values(await readTemplateForm(formData));
+  revalidatePath("/admin/schedule");
+}
+
+export async function updateTemplate(templateId: number, formData: FormData) {
+  await assertAdmin();
+  await getDb()
+    .update(sessionTemplates)
+    .set({ ...(await readTemplateForm(formData)), active: formData.get("active") === "on" })
+    .where(eq(sessionTemplates.id, templateId));
+  revalidatePath("/admin/schedule");
+}
+
+// Already generated sessions stay (class_sessions.template_id becomes NULL).
+export async function deleteTemplate(templateId: number) {
+  await assertAdmin();
+  await getDb().delete(sessionTemplates).where(eq(sessionTemplates.id, templateId));
+  revalidatePath("/admin/schedule");
+}
+
+export async function generateFromTemplates() {
+  await assertAdmin();
+  const result = await generateSessions();
+  revalidatePath("/admin/schedule");
+  revalidatePath("/admin/sessions");
+  revalidatePath("/schedule");
+  return result;
 }

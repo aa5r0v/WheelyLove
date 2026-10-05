@@ -36,6 +36,13 @@
       "when": 1791196741100,
       "tag": "0004_trainings_sport_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791196844627,
+      "tag": "0005_session_templates",
+      "breakpoints": true
     }
   ]
 }

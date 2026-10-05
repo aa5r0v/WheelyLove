@@ -25,6 +25,7 @@ export default async function AdminLayout({
       <nav className="mb-6 flex gap-4 border-b border-neutral-200 pb-4 text-sm font-medium">
         <Link href="/admin">Табло</Link>
         <Link href="/admin/sessions">Часове</Link>
+        <Link href="/admin/schedule">График (шаблон)</Link>
         <Link href="/admin/bookings">Резервации</Link>
         <Link href="/admin/sports">Спортове</Link>
         <Link href="/admin/instructors">Инструктори</Link>
