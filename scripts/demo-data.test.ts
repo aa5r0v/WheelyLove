@@ -336,7 +336,9 @@ describe("seed-demo", () => {
   });
 
   it("generates a password when none is given and returns it once", async () => {
+    const real = await snapshotReal();
     await removeDemo({ apply: true });
+    expect(await snapshotReal()).toEqual(real); // incl. the real user row
     const r = await seedDemo({ apply: true, now: NOW });
     expect(r.generatedPassword).toMatch(/^[A-Za-z0-9_-]{16}$/);
     expect(await signInCookie(`ani@${DEMO_DOMAIN}`, r.generatedPassword!)).toMatch(/session_token=/);
