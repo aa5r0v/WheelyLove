@@ -1,58 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
 
 export default function BookButton({
   sessionId,
   disabled,
+  signedIn,
 }: {
   sessionId: number;
   disabled: boolean;
+  signedIn: boolean;
 }) {
-  const { isSignedIn } = useUser();
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState<"card" | "cash" | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function startBooking() {
-    if (!isSignedIn) {
+    if (!signedIn) {
       window.location.href = "/sign-in";
       return;
     }
     setOpen(true);
   }
 
-  async function submit(paymentMethod: "card" | "cash") {
+  async function submit() {
     if (!phone.trim()) {
       setError("Моля, въведи телефонен номер за потвърждение.");
       return;
     }
-    if (paymentMethod === "card") {
-      setError("Плащането с карта все още не е налично. Моля, избери плащане на място.");
-      return;
-    }
     setError(null);
-    setLoading(paymentMethod);
+    setLoading(true);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, phone, paymentMethod }),
+        body: JSON.stringify({ sessionId, phone }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else if (data.ok) {
+      if (data.ok) {
         window.location.href = "/booking/success";
       } else {
         setError(data.error ?? "Грешка при създаване на резервация.");
-        setLoading(null);
+        setLoading(false);
       }
     } catch {
       setError("Възникна грешка. Опитайте отново.");
-      setLoading(null);
+      setLoading(false);
     }
   }
 
@@ -81,25 +75,16 @@ export default function BookButton({
         className="mt-1 w-full border border-line/20 px-2 py-1.5 text-sm outline-none transition-colors focus:border-accent-deep"
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      <div className="mt-3 flex flex-col gap-2">
-        <button
-          onClick={() => submit("card")}
-          disabled={loading !== null}
-          className="press font-display bg-accent px-3 py-2 text-sm tracking-wide text-accent-ink transition-opacity disabled:opacity-50"
-        >
-          {loading === "card" ? "Зареждане…" : "Плати с карта"}
-        </button>
-        <p className="text-center text-[11px] text-ink/40">
-          Плащането с карта временно не е налично
-        </p>
-        <button
-          onClick={() => submit("cash")}
-          disabled={loading !== null}
-          className="press font-display border border-ink px-3 py-2 text-sm tracking-wide transition-opacity disabled:opacity-50"
-        >
-          {loading === "cash" ? "Зареждане…" : "Плащане на място"}
-        </button>
-      </div>
+      <button
+        onClick={submit}
+        disabled={loading}
+        className="press font-display mt-3 w-full bg-accent px-3 py-2 text-sm tracking-wide text-accent-ink transition-opacity disabled:opacity-50"
+      >
+        {loading ? "Запазване…" : "Запази място"}
+      </button>
+      <p className="mt-2 text-center text-[11px] text-ink/40">
+        Плащането е на място, преди тренировката
+      </p>
     </div>
   );
 }

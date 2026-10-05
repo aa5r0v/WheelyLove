@@ -5,7 +5,7 @@ import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelBooking, confirmCashBooking } from "../actions";
 
 const statusLabels: Record<string, string> = {
-  pending: "Изчаква плащане",
+  pending: "Плащане на място",
   confirmed: "Потвърдена",
   cancelled: "Отказана",
 };

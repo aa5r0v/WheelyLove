@@ -25,7 +25,6 @@ export async function GET(req: Request) {
     .select({
       id: bookings.id,
       userEmail: bookings.userEmail,
-      paymentMethod: bookings.paymentMethod,
       startTime: classSessions.startTime,
       sportName: sports.name,
       instructorName: instructors.name,
@@ -60,7 +59,6 @@ export async function GET(req: Request) {
       sportName: b.sportName,
       instructorName: b.instructorName,
       startTime: b.startTime,
-      paymentMethod: b.paymentMethod,
     });
   }
 

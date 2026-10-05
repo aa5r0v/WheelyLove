@@ -2,22 +2,18 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 import { eq, inArray } from "drizzle-orm";
 
 const mocks = vi.hoisted(() => ({
-  currentUser: vi.fn(),
   email: vi.fn(async () => {}),
-  sms: vi.fn(async () => {}),
+  verification: vi.fn(async () => {}),
+  reset: vi.fn(async () => {}),
 }));
 
-vi.mock("@clerk/nextjs/server", () => ({ currentUser: mocks.currentUser }));
 vi.mock("@/lib/email", () => ({
   sendBookingConfirmationEmail: mocks.email,
   sendBookingCancelledEmail: mocks.email,
   sendBookingReminderEmail: mocks.email,
   sendWaitlistSpotOpenEmail: mocks.email,
-}));
-vi.mock("@/lib/sms", () => ({
-  sendBookingConfirmationSms: mocks.sms,
-  sendBookingCancelledSms: mocks.sms,
-  sendBookingReminderSms: mocks.sms,
+  sendVerificationEmail: mocks.verification,
+  sendPasswordResetEmail: mocks.reset,
 }));
 
 import { getDb } from "@/db";
@@ -25,14 +21,26 @@ import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { cancelBookingAndNotify } from "@/lib/bookings";
 import { POST as checkout } from "@/app/api/checkout/route";
 import { GET as cron } from "@/app/api/cron/reminders/route";
+import {
+  deleteUser,
+  makeVerifiedUser,
+  signInCookie,
+  signUpUser,
+  verifyUserEmail,
+} from "@/lib/test-helpers";
 
 const db = getDb();
 const tag = `hardening-${Date.now()}`;
 let sportId: number;
 let instructorId: number;
 const sessionIds: number[] = [];
+const userEmails: string[] = [];
 
-async function makeSession(opts: { capacity?: number; bookedCount?: number; startsInMs?: number }) {
+async function makeSession(opts: {
+  capacity?: number;
+  bookedCount?: number;
+  startsInMs?: number;
+}) {
   const start = Date.now() + (opts.startsInMs ?? 86400000);
   const [s] = await db
     .insert(classSessions)
@@ -58,15 +66,20 @@ async function spots(sessionId: number) {
   return s.n;
 }
 
-function req(body: unknown) {
+function req(body: unknown, cookie?: string) {
   return new Request("http://localhost/api/checkout", {
     method: "POST",
+    headers: cookie ? { cookie } : undefined,
     body: JSON.stringify(body),
   });
 }
 
-function loginAs(id: string, email = `${id}@example.com`) {
-  mocks.currentUser.mockResolvedValue({ id, primaryEmailAddress: { emailAddress: email } });
+// Registers a verified user with a custom email (for the column-overflow test).
+async function cookieForEmail(tagPart: string, email: string) {
+  userEmails.push(email);
+  await signUpUser({ email, name: "L" });
+  await verifyUserEmail(email);
+  return signInCookie(email);
 }
 
 beforeAll(async () => {
@@ -83,11 +96,13 @@ afterAll(async () => {
   }
   await db.delete(instructors).where(eq(instructors.id, instructorId));
   await db.delete(sports).where(eq(sports.id, sportId));
+  for (const email of userEmails) await deleteUser(email);
 });
 
 beforeEach(() => {
   mocks.email.mockClear();
-  mocks.sms.mockClear();
+  mocks.verification.mockClear();
+  mocks.reset.mockClear();
 });
 
 describe("cancel is atomic", () => {
@@ -112,18 +127,20 @@ describe("cancel is atomic", () => {
 
     expect(await spots(s.id)).toBe(1);
     expect(mocks.email).toHaveBeenCalledTimes(1);
-    expect(mocks.sms).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("checkout", () => {
   it("does not leak a spot when the booking insert fails", async () => {
     const s = await makeSession({ capacity: 3, bookedCount: 0 });
-    // Over-long email makes the INSERT fail after the spot was claimed.
-    loginAs(`${tag}-leak`, `${"x".repeat(300)}@example.com`);
+    // A 260-char email passes sign-up (the auth table stores text) but overflows
+    // bookings.user_email (varchar 256): the INSERT fails after the spot was claimed.
+    const email = `${"x".repeat(248)}@example.com`;
+    const cookie = await cookieForEmail(`${tag}-leak`, email);
+
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(
-      checkout(req({ sessionId: s.id, phone: "0888123456", paymentMethod: "cash" }))
+      checkout(req({ sessionId: s.id, phone: "0888123456" }, cookie))
     ).rejects.toThrow();
     spy.mockRestore();
     expect(await spots(s.id)).toBe(0);
@@ -131,44 +148,80 @@ describe("checkout", () => {
 
   it("books once, normalizes the phone, then answers 409 for a duplicate", async () => {
     const s = await makeSession({});
-    loginAs(`${tag}-dup`);
-    const ok = await checkout(req({ sessionId: s.id, phone: "0888 123 456", paymentMethod: "cash" }));
+    const email = `${tag}-dup@test.local`;
+    userEmails.push(email);
+    const cookie = await makeVerifiedUser(`${tag}-dup`);
+    const ok = await checkout(req({ sessionId: s.id, phone: "0888 123 456" }, cookie));
     expect(ok.status).toBe(200);
     const [b] = await db.select().from(bookings).where(eq(bookings.sessionId, s.id));
     expect(b.userPhone).toBe("+359888123456");
+    expect(b.userEmail).toBe(email);
 
-    const dup = await checkout(req({ sessionId: s.id, phone: "0888123456", paymentMethod: "cash" }));
+    const dup = await checkout(req({ sessionId: s.id, phone: "0888123456" }, cookie));
     expect(dup.status).toBe(409);
     expect(await spots(s.id)).toBe(1);
   });
 
   it("rejects a bad phone before claiming a spot", async () => {
     const s = await makeSession({});
-    loginAs(`${tag}-ph`);
-    const res = await checkout(req({ sessionId: s.id, phone: "+4915112345678", paymentMethod: "cash" }));
+    userEmails.push(`${tag}-ph@test.local`);
+    const cookie = await makeVerifiedUser(`${tag}-ph`);
+    const res = await checkout(
+      req({ sessionId: s.id, phone: "+4915112345678" }, cookie)
+    );
     expect(res.status).toBe(400);
     expect(await spots(s.id)).toBe(0);
   });
 
   it("rejects sessions in the past", async () => {
     const s = await makeSession({ startsInMs: -60000 });
-    loginAs(`${tag}-past`);
-    const res = await checkout(req({ sessionId: s.id, phone: "0888123456", paymentMethod: "cash" }));
+    userEmails.push(`${tag}-past@test.local`);
+    const cookie = await makeVerifiedUser(`${tag}-past`);
+    const res = await checkout(req({ sessionId: s.id, phone: "0888123456" }, cookie));
     expect(res.status).toBe(400);
     expect(await spots(s.id)).toBe(0);
   });
 
+  it("requires a session (401 without cookies)", async () => {
+    const s = await makeSession({});
+    const res = await checkout(req({ sessionId: s.id, phone: "0888123456" }));
+    expect(res.status).toBe(401);
+    expect(await spots(s.id)).toBe(0);
+  });
+
   it("rate-limits to 5 bookings per user per hour", async () => {
-    loginAs(`${tag}-rl`);
+    userEmails.push(`${tag}-rl@test.local`);
+    const cookie = await makeVerifiedUser(`${tag}-rl`);
     for (let i = 0; i < 5; i++) {
       const s = await makeSession({});
-      const res = await checkout(req({ sessionId: s.id, phone: "0888123456", paymentMethod: "cash" }));
+      const res = await checkout(req({ sessionId: s.id, phone: "0888123456" }, cookie));
       expect(res.status).toBe(200);
     }
     const s = await makeSession({});
-    const res = await checkout(req({ sessionId: s.id, phone: "0888123456", paymentMethod: "cash" }));
+    const res = await checkout(req({ sessionId: s.id, phone: "0888123456" }, cookie));
     expect(res.status).toBe(429);
     expect(await spots(s.id)).toBe(0);
+  });
+
+  it("the strict rate limit holds under parallel requests (no 6th booking)", async () => {
+    const email = `${tag}-par@test.local`;
+    userEmails.push(email);
+    const cookie = await makeVerifiedUser(`${tag}-par`);
+    const sessions = await Promise.all(Array.from({ length: 6 }, () => makeSession({})));
+
+    const results = await Promise.all(
+      sessions.map((s) =>
+        checkout(req({ sessionId: s.id, phone: "0888123456" }, cookie)).then(
+          (r) => r.status
+        )
+      )
+    );
+
+    expect(results.filter((code) => code === 200)).toHaveLength(5);
+    expect(results.filter((code) => code === 429)).toHaveLength(1);
+    // Exactly five spots claimed in total, no leaks.
+    const total = await Promise.all(sessions.map((s) => spots(s.id)));
+    expect(total.reduce((a, b) => a + b, 0)).toBe(5);
   });
 });
 

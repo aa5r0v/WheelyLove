@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
 import { and, count, eq, gt, gte, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { formatDateTimeShort } from "@/lib/format";
 import { normalizeBgPhone } from "@/lib/phone";
 import {
   bookings,
@@ -11,9 +9,8 @@ import {
   sports,
   waitlistEntries,
 } from "@/db/schema";
-import { getStripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
-import { cancelBookingAtomic } from "@/lib/bookings";
+import { getSession } from "@/lib/auth";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_BOOKINGS = 5;
@@ -23,24 +20,31 @@ function isUniqueViolation(err: unknown) {
   return e?.code === "23505" || e?.cause?.code === "23505";
 }
 
+class TooManyBookings extends Error {}
+
 export async function POST(req: Request) {
-  const user = await currentUser();
-  if (!user) {
+  const session = await getSession(req.headers);
+  if (!session) {
     return NextResponse.json({ error: "Неоторизиран достъп." }, { status: 401 });
   }
+  if (!session.user.emailVerified) {
+    return NextResponse.json(
+      { error: "Потвърди имейла си, за да резервираш — нов линк можеш да получиш от „Моите резервации“." },
+      { status: 403 }
+    );
+  }
 
-  let payload: { sessionId?: unknown; phone?: unknown; paymentMethod?: unknown };
+  let payload: { sessionId?: unknown; phone?: unknown };
   try {
     payload = await req.json();
   } catch {
     return NextResponse.json({ error: "Невалидна заявка." }, { status: 400 });
   }
-  const { sessionId, phone: rawPhone, paymentMethod } = payload;
+  const { sessionId, phone: rawPhone } = payload;
   if (
     typeof sessionId !== "number" ||
     !Number.isInteger(sessionId) ||
-    typeof rawPhone !== "string" ||
-    (paymentMethod !== "card" && paymentMethod !== "cash")
+    typeof rawPhone !== "string"
   ) {
     return NextResponse.json({ error: "Невалидна заявка." }, { status: 400 });
   }
@@ -53,20 +57,12 @@ export async function POST(req: Request) {
     );
   }
 
-  if (paymentMethod === "card") {
-    return NextResponse.json(
-      { error: "Плащането с карта все още не е налично." },
-      { status: 400 }
-    );
-  }
-
   const db = getDb();
-  const [session] = await db
+  const [classSession] = await db
     .select({
       id: classSessions.id,
       startTime: classSessions.startTime,
       capacity: classSessions.capacity,
-      priceCents: classSessions.priceCents,
       cancelledAt: classSessions.cancelledAt,
       sportName: sports.name,
       instructorName: instructors.name,
@@ -76,10 +72,10 @@ export async function POST(req: Request) {
     .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
     .where(eq(classSessions.id, sessionId));
 
-  if (!session || session.cancelledAt) {
+  if (!classSession || classSession.cancelledAt) {
     return NextResponse.json({ error: "Часът не съществува." }, { status: 404 });
   }
-  if (session.startTime.getTime() <= Date.now()) {
+  if (classSession.startTime.getTime() <= Date.now()) {
     return NextResponse.json({ error: "Часът вече е започнал или е минал." }, { status: 400 });
   }
 
@@ -88,8 +84,8 @@ export async function POST(req: Request) {
     .from(bookings)
     .where(
       and(
-        eq(bookings.sessionId, session.id),
-        eq(bookings.userId, user.id),
+        eq(bookings.sessionId, classSession.id),
+        eq(bookings.userId, session.user.id),
         inArray(bookings.status, ["pending", "confirmed"])
       )
     );
@@ -97,36 +93,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Вече имаш резервация за този час." }, { status: 409 });
   }
 
-  const [{ recent }] = await db
-    .select({ recent: count() })
-    .from(bookings)
-    .where(
-      and(
-        eq(bookings.userId, user.id),
-        gte(bookings.createdAt, new Date(Date.now() - RATE_LIMIT_WINDOW_MS))
-      )
-    );
-  if (recent >= RATE_LIMIT_MAX_BOOKINGS) {
-    return NextResponse.json(
-      { error: "Твърде много опити за резервация. Опитайте отново по-късно." },
-      { status: 429 }
-    );
-  }
-
-  const email = user.primaryEmailAddress?.emailAddress ?? "";
+  const email = session.user.email;
 
   // Claim the spot and create the booking in one transaction: a failing insert rolls the
   // bookedCount increment back, so no spot can leak.
   let booking: typeof bookings.$inferSelect | null;
   try {
     booking = await db.transaction(async (tx) => {
+      // Serialize booking creation per user: without the lock, parallel requests would
+      // all pass the count check before any of their inserts becomes visible.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${session.user.id}))`);
+
+      const [{ recent }] = await tx
+        .select({ recent: count() })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.userId, session.user.id),
+            gte(bookings.createdAt, new Date(Date.now() - RATE_LIMIT_WINDOW_MS))
+          )
+        );
+      if (recent >= RATE_LIMIT_MAX_BOOKINGS) throw new TooManyBookings();
+
       // Atomic: only claims a spot if capacity allows it, immune to concurrent requests.
       const [claimed] = await tx
         .update(classSessions)
         .set({ bookedCount: sql`${classSessions.bookedCount} + 1` })
         .where(
           and(
-            eq(classSessions.id, session.id),
+            eq(classSessions.id, classSession.id),
             isNull(classSessions.cancelledAt),
             gt(classSessions.startTime, new Date()),
             sql`${classSessions.bookedCount} < ${classSessions.capacity}`
@@ -138,23 +133,32 @@ export async function POST(req: Request) {
       const [inserted] = await tx
         .insert(bookings)
         .values({
-          sessionId: session.id,
-          userId: user.id,
+          sessionId: classSession.id,
+          userId: session.user.id,
           userEmail: email,
           userPhone: phone,
           status: "pending",
-          paymentMethod,
+          paymentMethod: "cash",
         })
         .returning();
 
       await tx
         .delete(waitlistEntries)
         .where(
-          and(eq(waitlistEntries.sessionId, session.id), eq(waitlistEntries.userId, user.id))
+          and(
+            eq(waitlistEntries.sessionId, classSession.id),
+            eq(waitlistEntries.userId, session.user.id)
+          )
         );
       return inserted;
     });
   } catch (err) {
+    if (err instanceof TooManyBookings) {
+      return NextResponse.json(
+        { error: "Твърде много опити за резервация. Опитайте отново по-късно." },
+        { status: 429 }
+      );
+    }
     if (isUniqueViolation(err)) {
       return NextResponse.json({ error: "Вече имаш резервация за този час." }, { status: 409 });
     }
@@ -165,54 +169,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Няма свободни места." }, { status: 409 });
   }
 
-  if (paymentMethod === "cash") {
-    await sendBookingConfirmationEmail({
-      to: email,
-      sportName: session.sportName,
-      instructorName: session.instructorName,
-      startTime: session.startTime,
-      paymentMethod: "cash",
-    });
-    return NextResponse.json({ ok: true });
-  }
-
-  try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "");
-    if (!appUrl) throw new Error("NEXT_PUBLIC_APP_URL is not set");
-    const stripe = getStripe();
-    const checkoutSession = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: email || undefined,
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            unit_amount: session.priceCents,
-            product_data: {
-              name: `${session.sportName} — ${formatDateTimeShort(session.startTime)}`,
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: { bookingId: String(booking.id) },
-      success_url: `${appUrl}/booking/success?booking=${booking.id}`,
-      cancel_url: `${appUrl}/`,
-    });
-
-    await db
-      .update(bookings)
-      .set({ stripeCheckoutSessionId: checkoutSession.id })
-      .where(eq(bookings.id, booking.id));
-
-    return NextResponse.json({ url: checkoutSession.url });
-  } catch (err) {
-    // Stripe failed to create the session — release the claimed spot and the booking row.
-    await cancelBookingAtomic(booking.id);
-    console.error("Failed to create Stripe checkout session:", err);
-    return NextResponse.json(
-      { error: "Грешка при създаване на плащане. Опитайте отново." },
-      { status: 500 }
-    );
-  }
+  await sendBookingConfirmationEmail({
+    to: email,
+    sportName: classSession.sportName,
+    instructorName: classSession.instructorName,
+    startTime: classSession.startTime,
+  });
+  return NextResponse.json({ ok: true });
 }

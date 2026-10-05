@@ -6,10 +6,10 @@ export default function BookingSuccessPage() {
       <p className="text-xs font-semibold tracking-[0.3em] text-accent">
         УСПЕХ
       </p>
-      <h1 className="font-display mt-3 text-4xl">Плащането е получено</h1>
+      <h1 className="font-display mt-3 text-4xl">Мястото ти е запазено</h1>
       <p className="mt-4 text-ink/60">
-        Резервацията ти ще бъде потвърдена веднага след обработка на плащането.
-        Можеш да провериш статуса в &quot;Моите резервации&quot;.
+        Плащането е на място в студиото — преди началото на тренировката. Ще ти
+        пратим напомняне по имейл в деня преди тренировката.
       </p>
       <Link
         href="/my-bookings"

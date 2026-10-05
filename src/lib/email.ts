@@ -101,16 +101,10 @@ type BookingEmailInfo = {
   sportName: string;
   instructorName: string;
   startTime: Date;
-  paymentMethod: "card" | "cash";
 };
 
 export async function sendBookingConfirmationEmail(info: BookingEmailInfo) {
   const dateStr = formatDateTimeLong(info.startTime);
-
-  const paymentNote =
-    info.paymentMethod === "cash"
-      ? "Плащането е на място, преди началото на тренировката."
-      : "Плащането с карта е получено.";
 
   await sendEmail({
     to: info.to,
@@ -123,7 +117,7 @@ export async function sendBookingConfirmationEmail(info: BookingEmailInfo) {
           ["Инструктор", info.instructorName],
           ["Дата и час", dateStr],
         ])}
-        <p style="margin: 0 0 12px;">${paymentNote}</p>
+        <p style="margin: 0 0 12px;">Плащането е на място, преди началото на тренировката.</p>
         <p style="margin: 0 0 12px;">Ако не можеш да дойдеш, откажи резервацията от „Моите резервации“,
           за да освободиш мястото за някой друг.</p>
       `,
@@ -147,11 +141,7 @@ export async function sendBookingReminderEmail(info: BookingEmailInfo) {
           ["Дата и час", dateStr],
         ])}
         <p style="margin: 0 0 12px;">Ела 10 минути по-рано. Не забравяй вода и кърпа.</p>
-        ${
-          info.paymentMethod === "cash"
-            ? `<p style="margin: 0 0 12px;">Плащането е на място, преди началото на тренировката.</p>`
-            : ""
-        }
+        <p style="margin: 0 0 12px;">Плащането е на място — преди началото на тренировката.</p>
       `,
       button: { label: "Моите резервации", url: `${SITE_URL}/my-bookings` },
     }),
@@ -188,16 +178,12 @@ type BookingCancelledInfo = {
   to: string;
   sportName: string;
   startTime: Date;
-  refunded: boolean;
   // "session" when the studio cancelled the whole class, not just this booking.
   reason: "booking" | "session";
 };
 
 export async function sendBookingCancelledEmail(info: BookingCancelledInfo) {
   const dateStr = formatDateTimeLong(info.startTime);
-  const refundNote = info.refunded
-    ? `<p style="margin: 0 0 12px;">Сумата ще бъде възстановена по картата ти в рамките на няколко работни дни.</p>`
-    : "";
 
   const sessionCancelled = info.reason === "session";
 
@@ -219,9 +205,45 @@ export async function sendBookingCancelledEmail(info: BookingCancelledInfo) {
                  Извиняваме се за неудобството — ще се радваме да те видим на друг час.</p>`
             : ""
         }
-        ${refundNote}
       `,
       button: { label: "Виж свободните часове", url: `${SITE_URL}/#schedule` },
+    }),
+  });
+}
+
+// ---------------------------------------------------------------- auth emails
+
+// url contains a one-time token; it expires after 24 hours.
+export async function sendVerificationEmail(info: { to: string; url: string }) {
+  await sendEmail({
+    to: info.to,
+    subject: "Потвърди имейла си в WheelyLove",
+    html: layout({
+      heading: "Добре дошли в WheelyLove! 🎉",
+      body: `
+        <p style="margin: 0 0 12px;">За да резервираш тренировка, първо потвърди имейл адреса си.
+          Натисни бутона по-долу — валиден е 24 часа.</p>
+        <p style="margin: 0 0 12px;">Ако не си създал акаунт в WheelyLove, просто игнорирай това писмо.</p>
+      `,
+      button: { label: "Потвърди имейл", url: info.url },
+    }),
+  });
+}
+
+// url contains a one-time token; it expires after 1 hour.
+export async function sendPasswordResetEmail(info: { to: string; url: string }) {
+  await sendEmail({
+    to: info.to,
+    subject: "Задай нова парола в WheelyLove",
+    html: layout({
+      heading: "Смяна на паролата",
+      body: `
+        <p style="margin: 0 0 12px;">Получихме заявка за нова парола за твоя акаунт.
+          Натисни бутона по-долу, за да зададеш нова — линкът е валиден 1 час.</p>
+        <p style="margin: 0 0 12px;">Ако не си поискал смяна на паролата, игнорирай това писмо —
+          паролата ти няма да се промени.</p>
+      `,
+      button: { label: "Задай нова парола", url: info.url },
     }),
   });
 }

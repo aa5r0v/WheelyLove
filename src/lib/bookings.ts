@@ -1,7 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, type DbOrTx } from "@/db";
 import { bookings, classSessions, sports } from "@/db/schema";
-import { refundPayment } from "./stripe";
 import { sendBookingCancelledEmail } from "./email";
 import { notifyWaitlist } from "./waitlist";
 
@@ -41,8 +40,6 @@ export async function cancelBookingAtomic(bookingId: number) {
       .returning({
         id: bookings.id,
         sessionId: bookings.sessionId,
-        paymentMethod: bookings.paymentMethod,
-        stripePaymentIntentId: bookings.stripePaymentIntentId,
       });
     if (!row) return null;
     await decrementSessionSpot(tx, row.sessionId);
@@ -75,17 +72,10 @@ export async function cancelBookingAndNotify(
   const cancelled = await cancelBookingAtomic(bookingId);
   if (!cancelled) return;
 
-  // A payment intent is only stored once the card payment was confirmed.
-  let refunded = false;
-  if (cancelled.paymentMethod === "card" && cancelled.stripePaymentIntentId) {
-    refunded = await refundPayment(cancelled.stripePaymentIntentId);
-  }
-
   await sendBookingCancelledEmail({
     to: booking.userEmail,
     sportName: booking.sportName,
     startTime: booking.startTime,
-    refunded,
     reason,
   });
 }
