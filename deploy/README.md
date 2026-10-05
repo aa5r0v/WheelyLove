@@ -198,6 +198,21 @@ systemctl start wheelylove-reminders.service && journalctl -u wheelylove-reminde
 ```
 Очаквано: `{"sent":N}`. Връщане: `systemctl disable --now wheelylove-reminders.timer`.
 
+### Проверка за неуспешно изпратени писма (на 15 мин)
+
+Всяко отхвърлено от Resend писмо се логва с маркера `[email:FAILED]` от приложението; писмата за резервации
+не прекъсват резервацията, затова грешката може да остане незабелязана. `deploy/scripts/check-email-failures.sh`
+брои маркерите в `docker logs --since <период>` на app контейнера и при >0 печата кратко обобщение по тип
+писмо (без имейл адреси) и излиза с код 1. Примерен cron ред (на 15 мин; в проекта няма механизъм за
+известия - записва се в syslog, както нощният архив):
+
+```cron
+*/15 * * * * root /srv/wheelylove/deploy/scripts/check-email-failures.sh 15m 2>&1 | logger -t wheelylove-email
+```
+
+При пропаднали писма в журнала се появява `wheelylove-email: ... EMAIL FAILURES ...` - алармирайте по него
+с обичайния за сървъра мониторинг (извън този пакет). Ръчен тест: `bash /srv/wheelylove/deploy/scripts/check-email-failures.sh 15m; echo $?`.
+
 ## 8. Архиви
 
 Нощно в 02:17 (`/etc/cron.d/wheelylove-backup`) се прави `pg_dump` (custom формат) на базата И `tar.gz` на
