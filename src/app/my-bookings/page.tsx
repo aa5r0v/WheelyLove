@@ -1,12 +1,13 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
+import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { formatDateTimeShort } from "@/lib/format";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelOwnBooking } from "./actions";
+import VerifyEmailBanner from "./verify-email-banner";
 
 const statusLabels: Record<string, string> = {
-  pending: "Изчаква плащане",
+  pending: "Плащане на място",
   confirmed: "Потвърдена",
   cancelled: "Отказана",
 };
@@ -17,12 +18,9 @@ const statusColor: Record<string, string> = {
   cancelled: "text-red-600",
 };
 
-function isUpcoming(d: Date) {
-  return d.getTime() > Date.now();
-}
-
 export default async function MyBookingsPage() {
-  const user = await currentUser();
+  const session = await getSession();
+  const user = session?.user ?? null;
   const db = getDb();
 
   const myBookings = user
@@ -42,9 +40,16 @@ export default async function MyBookingsPage() {
         .orderBy(desc(classSessions.startTime))
     : [];
 
+  // Server component: rendered per request, so Date.now() is stable within this
+  // render; cancelOwnBooking re-checks on submit anyway.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
       <h1 className="font-display text-4xl">Моите резервации</h1>
+
+      {user && !session?.user.emailVerified && <VerifyEmailBanner email={user.email} />}
 
       {!user && (
         <p className="mt-4 text-ink/60">
@@ -58,8 +63,7 @@ export default async function MyBookingsPage() {
 
       <div className="mt-8 space-y-3">
         {myBookings.map((b) => {
-          const canCancel =
-            b.status !== "cancelled" && isUpcoming(b.startTime);
+          const canCancel = b.status !== "cancelled" && b.startTime.getTime() > now;
           return (
             <div
               key={b.id}

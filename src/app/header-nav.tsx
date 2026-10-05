@@ -2,10 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
-export default function HeaderNav() {
+export default function HeaderNav({
+  user,
+}: {
+  user: { email: string; isAdmin: boolean } | null;
+}) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function signOut() {
+    setBusy(true);
+    await authClient.signOut();
+    setOpen(false);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <>
@@ -16,32 +31,57 @@ export default function HeaderNav() {
         <Link href="/my-bookings" className="hover:text-accent">
           Моите резервации
         </Link>
-        <Show when="signed-in">
+        {user?.isAdmin && (
           <Link href="/admin" className="hover:text-accent">
             Админ
           </Link>
-          <UserButton />
-        </Show>
-        <Show when="signed-out">
-          <SignInButton mode="modal">
-            <button className="press rounded-none bg-accent px-4 py-2 font-display text-sm tracking-wide text-accent-ink">
-              Вход
+        )}
+        {user ? (
+          <span className="flex items-center gap-3">
+            <span className="max-w-40 truncate text-paper/70">{user.email}</span>
+            <button
+              onClick={signOut}
+              disabled={busy}
+              className="press font-display rounded-none border border-paper/40 px-4 py-2 text-sm tracking-wide text-paper transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+            >
+              Изход
             </button>
-          </SignInButton>
-        </Show>
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <Link
+              href="/sign-up"
+              className="font-display px-2 py-2 text-sm tracking-wide text-paper/80 hover:text-accent"
+            >
+              Регистрация
+            </Link>
+            <Link
+              href="/sign-in"
+              className="press font-display rounded-none bg-accent px-4 py-2 text-sm tracking-wide text-accent-ink"
+            >
+              Вход
+            </Link>
+          </span>
+        )}
       </nav>
 
       <div className="flex items-center gap-3 sm:hidden">
-        <Show when="signed-in">
-          <UserButton />
-        </Show>
-        <Show when="signed-out">
-          <SignInButton mode="modal">
-            <button className="press font-display bg-accent px-3 py-1.5 text-sm tracking-wide text-accent-ink">
-              Вход
-            </button>
-          </SignInButton>
-        </Show>
+        {user ? (
+          <button
+            onClick={signOut}
+            disabled={busy}
+            className="press font-display border border-paper/40 px-3 py-1.5 text-sm tracking-wide text-paper disabled:opacity-50"
+          >
+            Изход
+          </button>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="press font-display bg-accent px-3 py-1.5 text-sm tracking-wide text-accent-ink"
+          >
+            Вход
+          </Link>
+        )}
         <button
           onClick={() => setOpen((v) => !v)}
           aria-label="Меню"
@@ -72,11 +112,16 @@ export default function HeaderNav() {
           <Link href="/my-bookings" onClick={() => setOpen(false)}>
             Моите резервации
           </Link>
-          <Show when="signed-in">
+          {user?.isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)}>
               Админ
             </Link>
-          </Show>
+          )}
+          {!user && (
+            <Link href="/sign-up" onClick={() => setOpen(false)}>
+              Регистрация
+            </Link>
+          )}
         </div>
       </div>
     </>

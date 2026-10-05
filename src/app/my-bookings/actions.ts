@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { currentUser } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { bookings, classSessions } from "@/db/schema";
 import { cancelBookingAndNotify } from "@/lib/bookings";
 
 export async function cancelOwnBooking(bookingId: number) {
-  const user = await currentUser();
-  if (!user) throw new Error("Неоторизиран достъп.");
+  const session = await getSession();
+  if (!session) throw new Error("Неоторизиран достъп.");
 
   const db = getDb();
   const [booking] = await db
@@ -22,7 +22,7 @@ export async function cancelOwnBooking(bookingId: number) {
     .innerJoin(classSessions, eq(bookings.sessionId, classSessions.id))
     .where(eq(bookings.id, bookingId));
 
-  if (!booking || booking.userId !== user.id) {
+  if (!booking || booking.userId !== session.user.id) {
     throw new Error("Резервацията не съществува.");
   }
   if (booking.status === "cancelled") {

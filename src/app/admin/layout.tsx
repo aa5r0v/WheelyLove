@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
-import { isAdmin } from "@/lib/admin";
+import { getSession } from "@/lib/auth";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
-  if (!user) redirect("/sign-in");
-  if (!(await isAdmin())) {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  if (session.user.role !== "admin") {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-bold">Нямаш достъп</h1>

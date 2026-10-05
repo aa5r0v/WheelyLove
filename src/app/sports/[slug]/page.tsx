@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { and, asc, eq, gte, inArray, isNull } from "drizzle-orm";
-import { currentUser } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import {
   bookings,
@@ -51,7 +51,8 @@ export default async function SportPage({
     )
     .orderBy(asc(classSessions.startTime));
 
-  const user = await currentUser();
+  const session = await getSession();
+  const user = session?.user ?? null;
   const sessionIds = upcoming.map((s) => s.id);
   const waitlist = sessionIds.length
     ? await db
@@ -166,10 +167,11 @@ export default async function SportPage({
                         {myBookedSessionIds.has(session.id) ? (
                           <p className="text-sm text-green-700">Записан си</p>
                         ) : spotsLeft > 0 ? (
-                          <BookButton sessionId={session.id} disabled={false} />
+                          <BookButton sessionId={session.id} disabled={false} signedIn={!!user} />
                         ) : (
                           <WaitlistButton
                             sessionId={session.id}
+                            signedIn={!!user}
                             {...waitlistInfo(session.id)}
                           />
                         )}

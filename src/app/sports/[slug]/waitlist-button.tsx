@@ -2,19 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { joinWaitlist, leaveWaitlist } from "./actions";
 
 export default function WaitlistButton({
   sessionId,
+  signedIn,
   position,
   waitingCount,
 }: {
   sessionId: number;
+  signedIn: boolean;
   position: number | null;
   waitingCount: number;
 }) {
-  const { isSignedIn } = useUser();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function WaitlistButton({
   }
 
   function join() {
-    if (!isSignedIn) {
+    if (!signedIn) {
       router.push("/sign-in");
       return;
     }
