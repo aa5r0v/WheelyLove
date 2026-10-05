@@ -35,6 +35,8 @@ yarn-error.log*
 # The production template is an example with placeholders only - keep it in git
 # (install.sh refuses to run without it).
 !deploy/.env.production.example
+# Same for the set-admin template (placeholders only).
+!.env.admin.example
 
 # vercel
 .vercel
