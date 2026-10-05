@@ -8,7 +8,7 @@ import {
   sports,
   waitlistEntries,
 } from "@/db/schema";
-import { cancelBookingAndNotify } from "./bookings";
+import { cancelBookingAndNotify, getOwnBookingDetail } from "./bookings";
 
 // Tests must never send real email/SMS (and need no provider API keys).
 vi.mock("./email", () => ({
@@ -132,5 +132,73 @@ describe("cancelBookingAndNotify", () => {
       .from(classSessions)
       .where(eq(classSessions.id, sessionId));
     expect(updatedSession.bookedCount).toBe(0);
+  });
+});
+
+describe("getOwnBookingDetail (the ?s= of /booking/success)", () => {
+  const db = getDb();
+  const stamp = Date.now();
+  const OWNER = `own-owner-${stamp}`;
+  const OTHER = `own-other-${stamp}`;
+  let sportId: number, instructorId: number, sessionId: number, bookingId: number;
+
+  beforeAll(async () => {
+    const [sport] = await db
+      .insert(sports)
+      .values({ slug: `own-detail-sport-${stamp}`, name: "Own Detail Sport" })
+      .returning();
+    sportId = sport.id;
+    const [instructor] = await db
+      .insert(instructors)
+      .values({ slug: `own-detail-instr-${stamp}`, name: "OD" })
+      .returning();
+    instructorId = instructor.id;
+    const [session] = await db
+      .insert(classSessions)
+      .values({
+        sportId,
+        instructorId,
+        startTime: new Date(Date.now() + 86400000),
+        endTime: new Date(Date.now() + 90000000),
+        capacity: 5,
+        priceCents: 600,
+      })
+      .returning();
+    sessionId = session.id;
+    const [booking] = await db
+      .insert(bookings)
+      .values({
+        sessionId,
+        userId: OWNER,
+        userEmail: "owner@example.com",
+        userPhone: "+359000000000",
+        status: "pending",
+        paymentMethod: "cash",
+      })
+      .returning();
+    bookingId = booking.id;
+  });
+
+  afterAll(async () => {
+    await db.delete(bookings).where(eq(bookings.id, bookingId));
+    await db.delete(classSessions).where(eq(classSessions.id, sessionId));
+    await db.delete(instructors).where(eq(instructors.id, instructorId));
+    await db.delete(sports).where(eq(sports.id, sportId));
+  });
+
+  it("returns the booking with its session details to the owner", async () => {
+    const detail = await getOwnBookingDetail(OWNER, bookingId);
+    expect(detail).not.toBeNull();
+    expect(detail!.id).toBe(bookingId);
+    expect(detail!.sportName).toBe("Own Detail Sport");
+    expect(detail!.startTime.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("returns nothing for another user's booking id (no leaking via ?s=)", async () => {
+    expect(await getOwnBookingDetail(OTHER, bookingId)).toBeNull();
+  });
+
+  it("returns nothing for a non-existent booking id", async () => {
+    expect(await getOwnBookingDetail(OWNER, bookingId + 1_000_000)).toBeNull();
   });
 });

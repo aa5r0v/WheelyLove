@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
@@ -5,6 +6,7 @@ import { formatDateTimeShort } from "@/lib/format";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelOwnBooking } from "./actions";
 import { getSavedPhone } from "@/lib/user-phone";
+import { signInUrl } from "@/lib/safe-next";
 import VerifyEmailBanner from "./verify-email-banner";
 import PhoneForm from "./phone-form";
 
@@ -59,17 +61,36 @@ export default async function MyBookingsPage() {
 
       {!user && (
         <p className="mt-4 text-ink/60">
-          Влез в профила си, за да видиш резервациите си.
+          Влез в профила си, за да видиш резервациите си.{" "}
+          <Link
+            href={signInUrl("/my-bookings")}
+            className="text-accent-deep underline underline-offset-2"
+          >
+            Вход
+          </Link>
         </p>
       )}
 
       {user && myBookings.length === 0 && (
-        <p className="mt-4 text-ink/50">Нямаш направени резервации.</p>
+        <div className="mt-4">
+          <p className="text-ink/50">Нямаш направени резервации.</p>
+          <Link
+            href="/schedule"
+            className="press font-display mt-4 inline-flex min-h-11 items-center bg-accent px-6 text-sm tracking-wide text-accent-ink"
+          >
+            Виж графика
+          </Link>
+        </div>
       )}
 
       <div className="mt-8 space-y-3">
         {myBookings.map((b) => {
           const canCancel = b.status !== "cancelled" && b.startTime.getTime() > now;
+          // A class that already happened shows "Минал", not "Плащане на място" —
+          // there is nothing left to pay for on the spot.
+          const isPast = b.startTime.getTime() <= now;
+          const label = isPast && b.status !== "cancelled" ? "Минал" : statusLabels[b.status];
+          const tone = isPast && b.status !== "cancelled" ? "text-ink/50" : statusColor[b.status];
           return (
             <div
               key={b.id}
@@ -85,9 +106,7 @@ export default async function MyBookingsPage() {
                 <p className="font-display">
                   {(b.priceCents / 100).toFixed(2)} €
                 </p>
-                <span className={`text-sm ${statusColor[b.status]}`}>
-                  {statusLabels[b.status]}
-                </span>
+                <span className={`text-sm ${tone}`}>{label}</span>
                 {canCancel && (
                   <form
                     action={async () => {

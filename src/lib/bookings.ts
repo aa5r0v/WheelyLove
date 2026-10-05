@@ -50,6 +50,26 @@ export async function cancelBookingAtomic(bookingId: number) {
   return cancelled;
 }
 
+// The booking shown on /booking/success?s=… — only its owner ever gets it;
+// for anyone else's id (or a wrong/absent id) there is nothing to show.
+export async function getOwnBookingDetail(userId: string, bookingId: number) {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      id: bookings.id,
+      status: bookings.status,
+      startTime: classSessions.startTime,
+      endTime: classSessions.endTime,
+      sportName: sports.name,
+      priceCents: classSessions.priceCents,
+    })
+    .from(bookings)
+    .innerJoin(classSessions, eq(bookings.sessionId, classSessions.id))
+    .innerJoin(sports, eq(classSessions.sportId, sports.id))
+    .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)));
+  return row ?? null;
+}
+
 export async function cancelBookingAndNotify(
   bookingId: number,
   reason: "booking" | "session" = "booking"

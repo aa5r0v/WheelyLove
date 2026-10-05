@@ -50,6 +50,13 @@ export default function HeaderNav({
             Админ
           </Link>
         )}
+        {/* Always one click away from booking, on every page. */}
+        <Link
+          href="/schedule"
+          className="press font-display rounded-none bg-accent px-4 py-2 text-sm tracking-wide text-accent-ink transition-colors hover:bg-accent-bright"
+        >
+          Запиши час
+        </Link>
         {user ? (
           <span className="flex items-center gap-3">
             <span className="max-w-40 truncate text-paper/70">{user.email}</span>
@@ -120,6 +127,13 @@ export default function HeaderNav({
         className="mobile-menu absolute left-0 right-0 top-full border-b-2 border-accent bg-ink px-4 py-4 text-sm font-medium sm:hidden"
       >
         <div className="flex flex-col gap-4">
+          <Link
+            href="/schedule"
+            onClick={() => setOpen(false)}
+            className="font-display bg-accent px-4 py-2.5 text-accent-ink"
+          >
+            Запиши час
+          </Link>
           <Link href="/#classes" onClick={() => setOpen(false)}>
             Тренировки
           </Link>
@@ -146,9 +160,14 @@ export default function HeaderNav({
             </Link>
           )}
           {!user && (
-            <Link href="/sign-up" onClick={() => setOpen(false)}>
-              Регистрация
-            </Link>
+            <>
+              <Link href="/sign-up" onClick={() => setOpen(false)}>
+                Регистрация
+              </Link>
+              <Link href="/sign-in" onClick={() => setOpen(false)}>
+                Вход
+              </Link>
+            </>
           )}
         </div>
       </div>
