@@ -13,6 +13,7 @@ import {
   waitlistEntries,
 } from "../src/db/schema";
 import { fromSofiaDateTime, toSofiaDateInput } from "../src/lib/format";
+import { sportPosters } from "../src/lib/sport-images";
 
 // Fictitious demo data, easy to remove again. Everything demo is recognisable:
 //  - users: email @demo.wheelylove.invalid (".invalid" can never be a real address)
@@ -31,9 +32,9 @@ const SPORT_PLAN = {
 type SportSlug = keyof typeof SPORT_PLAN;
 
 const DEMO_INSTRUCTORS = [
-  { slug: "demo-ani", name: "Ани", local: "ani", specialties: "Пилатес" },
-  { slug: "demo-tabi", name: "Таби", local: "tabi", specialties: "Steel Training" },
-  { slug: "demo-eli", name: "Ели", local: "eli", specialties: "Спининг" },
+  { slug: "demo-ani", name: "Ани", local: "ani", specialties: "Пилатес", sport: "pilates" },
+  { slug: "demo-tabi", name: "Таби", local: "tabi", specialties: "Steel Training", sport: "steel-training" },
+  { slug: "demo-eli", name: "Ели", local: "eli", specialties: "Спининг", sport: "spinning" },
 ] as const;
 
 // ISO weekday (1 = Monday), sport, Sofia wall-clock start.
@@ -176,8 +177,10 @@ export async function seedDemo(opts: {
     const instructorId = new Map<string, number>();
     for (const d of DEMO_INSTRUCTORS) {
       const email = `${d.local}@${DEMO_DOMAIN}`;
+      // The demo instructors reuse the sport poster as their photo.
+      const photoUrl = sportPosters[d.sport];
       let [ins] = await tx
-        .select({ id: instructors.id, userId: instructors.userId })
+        .select({ id: instructors.id, userId: instructors.userId, photoUrl: instructors.photoUrl })
         .from(instructors)
         .where(eq(instructors.slug, d.slug));
       if (!ins) {
@@ -189,9 +192,12 @@ export async function seedDemo(opts: {
             bio: "Демо инструктор (фиктивни данни).",
             email,
             specialties: d.specialties,
+            photoUrl,
           })
-          .returning({ id: instructors.id, userId: instructors.userId });
+          .returning({ id: instructors.id, userId: instructors.userId, photoUrl: instructors.photoUrl });
         report.instructorsCreated++;
+      } else if (ins.photoUrl !== photoUrl) {
+        await tx.update(instructors).set({ photoUrl }).where(eq(instructors.id, ins.id));
       }
       instructorId.set(d.slug, ins.id);
 

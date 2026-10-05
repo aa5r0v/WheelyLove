@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
@@ -61,9 +62,22 @@ export default async function InstructorPage({
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <div className="grid overflow-hidden border-2 border-accent sm:grid-cols-2">
         <div className="placeholder-media relative aspect-square sm:aspect-auto">
-          <span className="absolute bottom-2 right-2 bg-ink/70 px-2 py-1 text-[10px] tracking-widest text-paper/70">
-            СНИМКА
-          </span>
+          {instructor.photoUrl ? (
+            <Image
+              src={instructor.photoUrl}
+              // /uploads/ is served by nginx, not Next, so the optimizer can't fetch it.
+              unoptimized={!instructor.photoUrl.startsWith("/sports/")}
+              alt={instructor.name}
+              fill
+              sizes="(min-width: 640px) 50vw, 100vw"
+              priority
+              className="object-cover object-top"
+            />
+          ) : (
+            <span className="absolute bottom-2 right-2 bg-ink/70 px-2 py-1 text-[10px] tracking-widest text-paper/70">
+              СНИМКА
+            </span>
+          )}
         </div>
         <div className="flex flex-col justify-center bg-ink p-8 text-paper">
           <p className="inline-block w-fit bg-accent px-2 py-1 text-xs font-semibold tracking-[0.3em] text-accent-ink">

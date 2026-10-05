@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 import nodemailer, { type Transporter } from "nodemailer";
 import { formatDateTimeLong } from "./format";
+import { googleCalendarUrl, sessionCalendarDescription, sessionCalendarTitle } from "./calendar";
+import { STUDIO_ADDRESS_LINE, STUDIO_DIRECTIONS_URL } from "./studio";
 
 let _resend: Resend | null = null;
 
@@ -174,10 +176,34 @@ async function sendViaSmtp(params: { to: string; subject: string; html: string }
 
 type BookingEmailInfo = {
   to: string;
+  sessionId: number;
   sportName: string;
   instructorName: string;
   startTime: Date;
+  endTime: Date;
 };
+
+// Calendar + navigation links for the booked session — the same three targets
+// as the buttons on /booking/success. Plain <a> tags with inline styles only:
+// email clients drop <style> blocks and scripts.
+function calendarLinksHtml(info: BookingEmailInfo) {
+  const link = `color: ${ACCENT}; text-decoration: underline;`;
+  const googleUrl = googleCalendarUrl({
+    title: sessionCalendarTitle(info.sportName),
+    start: info.startTime,
+    end: info.endTime,
+    details: sessionCalendarDescription(info.instructorName),
+    location: STUDIO_ADDRESS_LINE,
+  });
+  return `
+        <p style="margin: 0 0 12px;">Добави тренировката в календара си:
+          <a href="${googleUrl}" style="${link}">Google Calendar</a> ·
+          <a href="${SITE_URL}/api/calendar/session/${info.sessionId}" style="${link}">Apple / Outlook (.ics)</a>
+        </p>
+        <p style="margin: 0 0 12px;">Мястото: ${STUDIO_ADDRESS_LINE} —
+          <a href="${STUDIO_DIRECTIONS_URL}" style="${link}">как да стигна</a>
+        </p>`;
+}
 
 export async function sendBookingConfirmationEmail(info: BookingEmailInfo) {
   const dateStr = formatDateTimeLong(info.startTime);
@@ -194,7 +220,9 @@ export async function sendBookingConfirmationEmail(info: BookingEmailInfo) {
           ["Тренировка", info.sportName],
           ["Инструктор", info.instructorName],
           ["Дата и час", dateStr],
+          ["Място", STUDIO_ADDRESS_LINE],
         ])}
+        ${calendarLinksHtml(info)}
         <p style="margin: 0 0 12px;">Плащането е на място, преди началото на тренировката.</p>
         <p style="margin: 0 0 12px;">Ако не можеш да дойдеш, откажи резервацията от „Моите резервации“,
           за да освободиш мястото за някой друг.</p>
@@ -219,7 +247,9 @@ export async function sendBookingReminderEmail(info: BookingEmailInfo) {
           ["Тренировка", info.sportName],
           ["Инструктор", info.instructorName],
           ["Дата и час", dateStr],
+          ["Място", STUDIO_ADDRESS_LINE],
         ])}
+        ${calendarLinksHtml(info)}
         <p style="margin: 0 0 12px;">Ела 10 минути по-рано. Не забравяй вода и кърпа.</p>
         <p style="margin: 0 0 12px;">Плащането е на място — преди началото на тренировката.</p>
       `,

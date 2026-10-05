@@ -24,8 +24,10 @@ export async function GET(req: Request) {
   const dueBookings = await db
     .select({
       id: bookings.id,
+      sessionId: bookings.sessionId,
       userEmail: bookings.userEmail,
       startTime: classSessions.startTime,
+      endTime: classSessions.endTime,
       sportName: sports.name,
       instructorName: instructors.name,
     })
@@ -56,9 +58,11 @@ export async function GET(req: Request) {
     sent++;
     await sendBookingReminderEmail({
       to: b.userEmail,
+      sessionId: b.sessionId,
       sportName: b.sportName,
       instructorName: b.instructorName,
       startTime: b.startTime,
+      endTime: b.endTime,
     });
   }
 

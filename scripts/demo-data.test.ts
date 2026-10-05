@@ -239,12 +239,19 @@ describe("seed-demo", () => {
 
     // Accounts: the password really signs in (hash made with better-auth's own function);
     // role + verified email; instructors are linked. Clients have no credential.
+    // Each demo instructor carries the poster of the sport they teach.
+    const demoPhotos: Record<string, string> = {
+      ani: "/sports/pilates.jpg",
+      tabi: "/sports/steel-training.jpg",
+      eli: "/sports/spinning.jpg",
+    };
     for (const local of ["ani", "tabi", "eli"]) {
       const email = `${local}@${DEMO_DOMAIN}`;
       const [u] = await db.select().from(user).where(eq(user.email, email));
       expect(u).toMatchObject({ role: "instructor", emailVerified: true });
       const [ins] = await db.select().from(instructors).where(eq(instructors.slug, `demo-${local}`));
       expect(ins.userId).toBe(u.id);
+      expect(ins.photoUrl).toBe(demoPhotos[local]);
       expect(await signInCookie(email, PASSWORD)).toMatch(/session_token=/);
     }
     await expect(signInCookie(`client01@${DEMO_DOMAIN}`, PASSWORD)).rejects.toThrow();
@@ -344,6 +351,23 @@ describe("seed-demo", () => {
       generatedPassword: null,
     });
     expect(await counts()).toEqual(before);
+  });
+
+  it("re-applies the sport poster photo to an existing demo instructor row", async () => {
+    await db
+      .update(instructors)
+      .set({ photoUrl: null })
+      .where(like(instructors.slug, "demo-%"));
+    await seedDemo({ apply: true, password: PASSWORD, now: NOW });
+    const rows = await db
+      .select({ slug: instructors.slug, photoUrl: instructors.photoUrl })
+      .from(instructors)
+      .where(like(instructors.slug, "demo-%"));
+    expect(Object.fromEntries(rows.map((r) => [r.slug, r.photoUrl]))).toEqual({
+      "demo-ani": "/sports/pilates.jpg",
+      "demo-tabi": "/sports/steel-training.jpg",
+      "demo-eli": "/sports/spinning.jpg",
+    });
   });
 
   it("generates a password when none is given and returns it once", async () => {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getOwnBookingDetail } from "@/lib/bookings";
 import { formatDateTimeLong } from "@/lib/format";
+import BookingCalendarActions from "@/components/booking-calendar-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,13 @@ export default async function BookingSuccessPage({
   const session = await getSession();
   const booking =
     session && bookingId !== null ? await getOwnBookingDetail(session.user.id, bookingId) : null;
+  // Calendar buttons only while the hour is still ahead and not cancelled.
+  // Server component rendered per request, so Date.now() is stable within this
+  // render (same reasoning as /my-bookings).
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+  const showCalendar =
+    !!booking && booking.status !== "cancelled" && booking.startTime.getTime() > now;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-24 text-center sm:px-6">
@@ -39,6 +47,17 @@ export default async function BookingSuccessPage({
         Плащането е на място в студиото — преди началото на тренировката. Ще ти
         пратим напомняне по имейл в деня преди тренировката.
       </p>
+      {showCalendar && booking && (
+        <div className="mt-8 flex justify-center text-left">
+          <BookingCalendarActions
+            sessionId={booking.sessionId}
+            sportName={booking.sportName}
+            instructorName={booking.instructorName}
+            startTime={booking.startTime}
+            endTime={booking.endTime}
+          />
+        </div>
+      )}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
         <Link
           href="/my-bookings"

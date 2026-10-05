@@ -63,6 +63,7 @@ export async function POST(req: Request) {
     .select({
       id: classSessions.id,
       startTime: classSessions.startTime,
+      endTime: classSessions.endTime,
       capacity: classSessions.capacity,
       cancelledAt: classSessions.cancelledAt,
       sportName: sports.name,
@@ -180,9 +181,11 @@ export async function POST(req: Request) {
 
   await sendBookingConfirmationEmail({
     to: email,
+    sessionId: classSession.id,
     sportName: classSession.sportName,
     instructorName: classSession.instructorName,
     startTime: classSession.startTime,
+    endTime: classSession.endTime,
   });
   // The id lets /booking/success?s=… show which session was booked.
   return NextResponse.json({ ok: true, bookingId: booking.id });

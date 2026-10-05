@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, type DbOrTx } from "@/db";
-import { bookings, classSessions, sports } from "@/db/schema";
+import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { sendBookingCancelledEmail } from "./email";
 import { notifyWaitlist } from "./waitlist";
 
@@ -57,15 +57,19 @@ export async function getOwnBookingDetail(userId: string, bookingId: number) {
   const [row] = await db
     .select({
       id: bookings.id,
+      sessionId: bookings.sessionId,
       status: bookings.status,
       startTime: classSessions.startTime,
       endTime: classSessions.endTime,
       sportName: sports.name,
+      instructorName: instructors.name,
       priceCents: classSessions.priceCents,
     })
     .from(bookings)
     .innerJoin(classSessions, eq(bookings.sessionId, classSessions.id))
     .innerJoin(sports, eq(classSessions.sportId, sports.id))
+    // instructor_id is NOT NULL on class_sessions, so every session has one.
+    .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
     .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)));
   return row ?? null;
 }

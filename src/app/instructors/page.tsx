@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { asc } from "drizzle-orm";
 import { getDb } from "@/db";
 import { instructors } from "@/db/schema";
@@ -30,11 +31,27 @@ export default async function InstructorsPage() {
             <li key={i.id}>
               <Link
                 href={`/instructors/${i.slug}`}
-                className="card-lift block min-h-11 border-l-4 border-accent bg-paper-dim p-5"
+                className="card-lift block min-h-11 border-l-4 border-accent bg-paper-dim"
               >
-                <h2 className="font-display text-2xl">{i.name}</h2>
-                {i.specialties && <p className="mt-1 text-sm text-ink/60">{i.specialties}</p>}
-                <span className="font-display mt-3 inline-block text-sm text-accent-deep">Виж визитката →</span>
+                {/* Same poster treatment as the home page sport cards. */}
+                {i.photoUrl && (
+                  <span className="placeholder-media relative block aspect-[3/4] overflow-hidden">
+                    <Image
+                      src={i.photoUrl}
+                      // /uploads/ is served by nginx, not Next, so the optimizer can't fetch it.
+                      unoptimized={!i.photoUrl.startsWith("/sports/")}
+                      alt={i.name}
+                      fill
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover object-top"
+                    />
+                  </span>
+                )}
+                <div className="p-5">
+                  <h2 className="font-display text-2xl">{i.name}</h2>
+                  {i.specialties && <p className="mt-1 text-sm text-ink/60">{i.specialties}</p>}
+                  <span className="font-display mt-3 inline-block text-sm text-accent-deep">Виж визитката →</span>
+                </div>
               </Link>
             </li>
           ))}

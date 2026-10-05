@@ -3,12 +3,13 @@ import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { formatDateTimeShort } from "@/lib/format";
-import { bookings, classSessions, sports } from "@/db/schema";
+import { bookings, classSessions, instructors, sports } from "@/db/schema";
 import { cancelOwnBooking } from "./actions";
 import { getSavedPhone } from "@/lib/user-phone";
 import { signInUrl } from "@/lib/safe-next";
 import VerifyEmailBanner from "./verify-email-banner";
 import PhoneForm from "./phone-form";
+import BookingCalendarActions from "@/components/booking-calendar-actions";
 
 const statusLabels: Record<string, string> = {
   pending: "Плащане на място",
@@ -31,15 +32,19 @@ export default async function MyBookingsPage() {
     ? await db
         .select({
           id: bookings.id,
+          sessionId: bookings.sessionId,
           status: bookings.status,
           startTime: classSessions.startTime,
           endTime: classSessions.endTime,
           sportName: sports.name,
+          instructorName: instructors.name,
           priceCents: classSessions.priceCents,
         })
         .from(bookings)
         .innerJoin(classSessions, eq(bookings.sessionId, classSessions.id))
         .innerJoin(sports, eq(classSessions.sportId, sports.id))
+        // instructor_id is NOT NULL on class_sessions, so every session has one.
+        .innerJoin(instructors, eq(classSessions.instructorId, instructors.id))
         .where(eq(bookings.userId, user.id))
         .orderBy(desc(classSessions.startTime))
     : [];
@@ -94,32 +99,43 @@ export default async function MyBookingsPage() {
           return (
             <div
               key={b.id}
-              className="flex flex-col gap-3 border-l-4 border-accent bg-paper-dim p-5 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 border-l-4 border-accent bg-paper-dim p-5"
             >
-              <div>
-                <p className="font-display text-lg">{b.sportName}</p>
-                <p className="text-sm text-ink/60">
-                  {formatDateTimeShort(b.startTime)}
-                </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-display text-lg">{b.sportName}</p>
+                  <p className="text-sm text-ink/60">
+                    {formatDateTimeShort(b.startTime)}
+                  </p>
+                </div>
+                <div className="sm:text-right">
+                  <p className="font-display">
+                    {(b.priceCents / 100).toFixed(2)} €
+                  </p>
+                  <span className={`text-sm ${tone}`}>{label}</span>
+                  {canCancel && (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await cancelOwnBooking(b.id);
+                      }}
+                    >
+                      <button className="mt-1 block text-sm text-red-600 hover:underline">
+                        Откажи
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
-              <div className="sm:text-right">
-                <p className="font-display">
-                  {(b.priceCents / 100).toFixed(2)} €
-                </p>
-                <span className={`text-sm ${tone}`}>{label}</span>
-                {canCancel && (
-                  <form
-                    action={async () => {
-                      "use server";
-                      await cancelOwnBooking(b.id);
-                    }}
-                  >
-                    <button className="mt-1 block text-sm text-red-600 hover:underline">
-                      Откажи
-                    </button>
-                  </form>
-                )}
-              </div>
+              {canCancel && (
+                <BookingCalendarActions
+                  sessionId={b.sessionId}
+                  sportName={b.sportName}
+                  instructorName={b.instructorName}
+                  startTime={b.startTime}
+                  endTime={b.endTime}
+                />
+              )}
             </div>
           );
         })}

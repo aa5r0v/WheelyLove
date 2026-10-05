@@ -5,6 +5,7 @@ import Image from "next/image";
 import RegisterServiceWorker from "./register-sw";
 import HeaderNav from "./header-nav";
 import { getSession } from "@/lib/auth";
+import { STUDIO_ADDRESS_LINE, STUDIO_DIRECTIONS_URL } from "@/lib/studio";
 import "./globals.css";
 
 const oswald = Oswald({
@@ -84,6 +85,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 ·{" "}
                 <a href="tel:+359886573880" className="hover:text-accent">
                   +359 886 573 880
+                </a>
+              </p>
+              <p className="mt-2 text-sm text-paper/60">
+                {STUDIO_ADDRESS_LINE} ·{" "}
+                <a
+                  href={STUDIO_DIRECTIONS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-accent"
+                >
+                  Как да стигна
                 </a>
               </p>
               <p className="mt-4 text-sm text-paper/60">
