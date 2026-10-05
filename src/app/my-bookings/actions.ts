@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { bookings, classSessions } from "@/db/schema";
 import { cancelBookingAndNotify } from "@/lib/bookings";
+import { normalizePhone } from "@/lib/phone";
+import { getSavedPhone, savePhone } from "@/lib/user-phone";
 
 export async function cancelOwnBooking(bookingId: number) {
   const session = await getSession();
@@ -34,4 +36,29 @@ export async function cancelOwnBooking(bookingId: number) {
 
   await cancelBookingAndNotify(bookingId);
   revalidatePath("/my-bookings");
+}
+
+export type PhoneResult = { ok: true; phone: string } | { ok: false; error: string };
+
+// Updates the phone of the signed-in user only: the id always comes from the session.
+export async function updateOwnPhone(raw: unknown): Promise<PhoneResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Неоторизиран достъп." };
+  if (typeof raw !== "string") return { ok: false, error: "Невалиден телефонен номер." };
+  const phone = normalizePhone(raw);
+  if (!phone) {
+    return {
+      ok: false,
+      error: "Невалиден телефонен номер. Въведи български (08… или +359…) или международен номер (+код на държавата…).",
+    };
+  }
+  await savePhone(session.user.id, phone);
+  revalidatePath("/my-bookings");
+  return { ok: true, phone };
+}
+
+// The saved phone of the signed-in user (null when none / not signed in).
+export async function getOwnPhone(): Promise<string | null> {
+  const session = await getSession();
+  return session ? getSavedPhone(session.user.id) : null;
 }

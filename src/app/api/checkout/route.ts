@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { and, count, eq, gt, gte, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { normalizeBgPhone } from "@/lib/phone";
+import { normalizePhone } from "@/lib/phone";
+import { savePhone } from "@/lib/user-phone";
 import {
   bookings,
   classSessions,
@@ -49,10 +50,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Невалидна заявка." }, { status: 400 });
   }
 
-  const phone = normalizeBgPhone(rawPhone);
+  const phone = normalizePhone(rawPhone);
   if (!phone) {
     return NextResponse.json(
-      { error: "Невалиден телефонен номер. Използвай български номер (+359… или 08…)." },
+      { error: "Невалиден телефонен номер. Въведи български (08… или +359…) или международен номер (+код на държавата…)." },
       { status: 400 }
     );
   }
@@ -167,6 +168,14 @@ export async function POST(req: Request) {
 
   if (!booking) {
     return NextResponse.json({ error: "Няма свободни места." }, { status: 409 });
+  }
+
+  // Remember the number for next time (the booking already keeps its own snapshot).
+  // A failure here must not turn a successful booking into an error.
+  try {
+    await savePhone(session.user.id, phone);
+  } catch (err) {
+    console.error("Failed to save the user's phone", err);
   }
 
   await sendBookingConfirmationEmail({

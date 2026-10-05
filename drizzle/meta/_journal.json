@@ -57,6 +57,13 @@
       "when": 1791202020266,
       "tag": "0007_instructor_panel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791208745319,
+      "tag": "0008_user_phone",
+      "breakpoints": true
     }
   ]
 }

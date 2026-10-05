@@ -169,7 +169,7 @@ describe("checkout", () => {
     userEmails.push(`${tag}-ph@test.local`);
     const cookie = await makeVerifiedUser(`${tag}-ph`);
     const res = await checkout(
-      req({ sessionId: s.id, phone: "+4915112345678" }, cookie)
+      req({ sessionId: s.id, phone: "+0912345678" }, cookie)
     );
     expect(res.status).toBe(400);
     expect(await spots(s.id)).toBe(0);

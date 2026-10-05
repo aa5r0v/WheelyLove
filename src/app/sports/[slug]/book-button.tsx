@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getOwnPhone } from "@/app/my-bookings/actions";
 
 export default function BookButton({
   sessionId,
@@ -24,11 +25,17 @@ export default function BookButton({
       return;
     }
     setOpen(true);
+    // Prefill the saved number: the phone is asked only once.
+    getOwnPhone()
+      .then((saved) => {
+        if (saved) setPhone((cur) => (cur ? cur : saved));
+      })
+      .catch(() => {});
   }
 
   async function submit() {
     if (!phone.trim()) {
-      setError("Моля, въведи телефонен номер за потвърждение.");
+      setError("Моля, въведи телефон за връзка.");
       return;
     }
     setError(null);
@@ -67,7 +74,7 @@ export default function BookButton({
   return (
     <div className="pop-in w-60 border-2 border-accent bg-paper p-4">
       <label className="block text-xs font-medium tracking-wide text-ink/60">
-        Телефон за потвърждение
+        Телефон за връзка
       </label>
       <input
         type="tel"
@@ -76,6 +83,9 @@ export default function BookButton({
         placeholder="+359..."
         className="mt-1 w-full border border-line/20 px-2 py-1.5 text-sm outline-none transition-colors focus:border-accent-deep"
       />
+      <p className="mt-1 text-[11px] text-ink/50">
+        Ползваме го само ако часът се промени или отмени.
+      </p>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       <button
         onClick={submit}

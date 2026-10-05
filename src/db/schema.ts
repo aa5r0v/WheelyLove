@@ -171,6 +171,8 @@ export const user = pgTable("user", {
   // "user" | "admin" | "instructor"; set only via scripts/set-admin.ts, scripts/set-instructor.ts
   // or the admin panel (instructor link), never from the client.
   role: text("role").notNull().default("user"),
+  // Saved contact phone (E.164), asked once at the first booking; never set from auth input.
+  phone: varchar("phone", { length: 32 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -4,7 +4,9 @@ import { getDb } from "@/db";
 import { formatDateTimeShort } from "@/lib/format";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelOwnBooking } from "./actions";
+import { getSavedPhone } from "@/lib/user-phone";
 import VerifyEmailBanner from "./verify-email-banner";
+import PhoneForm from "./phone-form";
 
 const statusLabels: Record<string, string> = {
   pending: "Плащане на място",
@@ -40,6 +42,8 @@ export default async function MyBookingsPage() {
         .orderBy(desc(classSessions.startTime))
     : [];
 
+  const savedPhone = user ? await getSavedPhone(user.id) : null;
+
   // Server component: rendered per request, so Date.now() is stable within this
   // render; cancelOwnBooking re-checks on submit anyway.
   // eslint-disable-next-line react-hooks/purity
@@ -50,6 +54,8 @@ export default async function MyBookingsPage() {
       <h1 className="font-display text-4xl">Моите резервации</h1>
 
       {user && !session?.user.emailVerified && <VerifyEmailBanner email={user.email} />}
+
+      {user && <PhoneForm initialPhone={savedPhone} />}
 
       {!user && (
         <p className="mt-4 text-ink/60">
