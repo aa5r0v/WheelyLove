@@ -53,7 +53,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <HeaderNav
               user={
                 session
-                  ? { email: session.user.email, isAdmin: session.user.role === "admin" }
+                  ? {
+                      email: session.user.email,
+                      isAdmin: session.user.role === "admin",
+                      // Only a menu hint; /instructor re-checks everything on the server.
+                      isInstructor: session.user.role === "instructor",
+                    }
                   : null
               }
             />

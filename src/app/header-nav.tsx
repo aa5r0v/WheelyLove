@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 export default function HeaderNav({
   user,
 }: {
-  user: { email: string; isAdmin: boolean } | null;
+  user: { email: string; isAdmin: boolean; isInstructor?: boolean } | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -40,6 +40,11 @@ export default function HeaderNav({
         <Link href="/my-bookings" className="hover:text-accent">
           Моите резервации
         </Link>
+        {user?.isInstructor && (
+          <Link href="/instructor" className="hover:text-accent">
+            Моите часове
+          </Link>
+        )}
         {user?.isAdmin && (
           <Link href="/admin" className="hover:text-accent">
             Админ
@@ -130,6 +135,11 @@ export default function HeaderNav({
           <Link href="/my-bookings" onClick={() => setOpen(false)}>
             Моите резервации
           </Link>
+          {user?.isInstructor && (
+            <Link href="/instructor" onClick={() => setOpen(false)}>
+              Моите часове
+            </Link>
+          )}
           {user?.isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)}>
               Админ

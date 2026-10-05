@@ -50,6 +50,13 @@
       "when": 1791197712384,
       "tag": "0006_template_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791202020266,
+      "tag": "0007_instructor_panel",
+      "breakpoints": true
     }
   ]
 }

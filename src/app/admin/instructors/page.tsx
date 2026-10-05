@@ -1,11 +1,23 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { instructors } from "@/db/schema";
-import { createInstructor, deleteInstructor } from "../actions";
+import { instructors, user } from "@/db/schema";
+import { createInstructor, deleteInstructor, removeInstructorAccess } from "../actions";
+import InstructorAccess from "./instructor-access";
 
 export default async function AdminInstructorsPage() {
   const db = getDb();
-  const all = await db.select().from(instructors).orderBy(asc(instructors.name));
+  const all = await db
+    .select({
+      id: instructors.id,
+      name: instructors.name,
+      specialties: instructors.specialties,
+      email: instructors.email,
+      phone: instructors.phone,
+      accountEmail: user.email,
+    })
+    .from(instructors)
+    .leftJoin(user, eq(user.id, instructors.userId))
+    .orderBy(asc(instructors.name));
 
   return (
     <div>
@@ -15,24 +27,42 @@ export default async function AdminInstructorsPage() {
         {all.map((i) => (
           <div
             key={i.id}
-            className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3"
+            className="rounded-lg border border-neutral-200 bg-white p-3"
           >
-            <div>
-              <p className="font-medium">{i.name}</p>
-              <p className="text-sm text-neutral-500">
-                {i.specialties} · {i.email} · {i.phone}
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{i.name}</p>
+                <p className="text-sm text-neutral-500">
+                  {i.specialties} · {i.email} · {i.phone}
+                </p>
+              </div>
+              <form
+                action={async () => {
+                  "use server";
+                  await deleteInstructor(i.id);
+                }}
+              >
+                <button className="text-sm text-red-600 hover:underline">
+                  Изтрий
+                </button>
+              </form>
             </div>
-            <form
-              action={async () => {
-                "use server";
-                await deleteInstructor(i.id);
-              }}
-            >
-              <button className="text-sm text-red-600 hover:underline">
-                Изтрий
-              </button>
-            </form>
+            <div className="mt-3 border-t border-neutral-100 pt-3 text-sm">
+              {i.accountEmail ? (
+                <form
+                  action={async () => {
+                    "use server";
+                    await removeInstructorAccess(i.id);
+                  }}
+                  className="flex items-center justify-between"
+                >
+                  <span>Достъп до панела: {i.accountEmail}</span>
+                  <button className="text-red-600 hover:underline">Махни достъпа</button>
+                </form>
+              ) : (
+                <InstructorAccess instructorId={i.id} />
+              )}
+            </div>
           </div>
         ))}
       </div>

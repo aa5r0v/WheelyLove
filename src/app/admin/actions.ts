@@ -23,6 +23,7 @@ import {
   parseTemplateForm,
 } from "@/lib/trainings";
 import { generateSessions } from "@/lib/schedule-generator";
+import { linkInstructorAccount, unlinkInstructorAccount } from "@/lib/instructor-link";
 
 async function assertAdmin() {
   if (!(await isAdmin())) {
@@ -211,6 +212,29 @@ export async function deleteInstructor(instructorId: number) {
   await db.delete(instructors).where(eq(instructors.id, instructorId));
   revalidatePath("/admin/instructors");
   revalidatePath("/instructors");
+}
+
+export type InstructorAccessState = { error?: string; ok?: string };
+
+// Gives an existing (verified) account the instructor role + link. Errors are
+// returned (not thrown) so the admin sees the exact reason in production too.
+export async function linkInstructorAccess(
+  instructorId: number,
+  _prev: InstructorAccessState,
+  formData: FormData
+): Promise<InstructorAccessState> {
+  await assertAdmin();
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Въведи имейл." };
+  const r = await linkInstructorAccount({ email, instructor: { id: instructorId } });
+  revalidatePath("/admin/instructors");
+  return r.ok ? { ok: `Свързан акаунт: ${r.email}` } : { error: r.message };
+}
+
+export async function removeInstructorAccess(instructorId: number) {
+  await assertAdmin();
+  await unlinkInstructorAccount(instructorId);
+  revalidatePath("/admin/instructors");
 }
 
 export async function uploadGalleryItem(formData: FormData) {

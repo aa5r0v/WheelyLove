@@ -25,6 +25,9 @@ export const galleryTypeEnum = pgEnum("gallery_type", ["image", "video"]);
 
 export const sportLevelEnum = pgEnum("sport_level", ["all", "beginner", "intermediate", "advanced"]);
 
+// Instructor's own mark of who actually came (set from /instructor, never by the client).
+export const attendanceEnum = pgEnum("booking_attendance", ["unknown", "attended", "no_show"]);
+
 export const sports = pgTable("sports", {
   id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 64 }).notNull().unique(),
@@ -47,6 +50,11 @@ export const instructors = pgTable("instructors", {
   email: varchar("email", { length: 256 }),
   phone: varchar("phone", { length: 32 }),
   specialties: varchar("specialties", { length: 256 }).default(""),
+  // The login account of this instructor (user.role = "instructor"); linked only
+  // by an admin (admin page / scripts/set-instructor.ts), at most one account each.
+  userId: text("user_id")
+    .unique()
+    .references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -113,6 +121,7 @@ export const bookings = pgTable(
     userEmail: varchar("user_email", { length: 256 }).notNull(),
     userPhone: varchar("user_phone", { length: 32 }).notNull(),
     status: bookingStatusEnum("status").notNull().default("pending"),
+    attendance: attendanceEnum("attendance").notNull().default("unknown"),
     // Плащането е само на място; стойността в enum-а "card" е наследена от стари данни.
     paymentMethod: paymentMethodEnum("payment_method").notNull().default("cash"),
     reminderSentAt: timestamp("reminder_sent_at"),
@@ -159,7 +168,8 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
-  // "user" | "admin"; set only via scripts/set-admin.ts, never from the client.
+  // "user" | "admin" | "instructor"; set only via scripts/set-admin.ts, scripts/set-instructor.ts
+  // or the admin panel (instructor link), never from the client.
   role: text("role").notNull().default("user"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
