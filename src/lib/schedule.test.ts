@@ -7,6 +7,7 @@ import {
   dayRange,
   getDaySessions,
   getDaysWithSessions,
+  getInstructorUpcomingSessions,
   occupancyOf,
   resolveDate,
   scheduleDates,
@@ -164,5 +165,91 @@ describe("getDaySessions (database)", () => {
     expect(days.has("2026-10-21")).toBe(true);
     expect(days.has("2026-10-25")).toBe(true);
     expect(days.has("2026-10-22")).toBe(false);
+  });
+});
+
+describe("getInstructorUpcomingSessions (the instructor profile)", () => {
+  const db = getDb();
+  const stamp = Date.now();
+  const NOW = new Date("2026-10-12T09:00:00Z");
+  let sportId: number, instrA: number, instrB: number;
+  const at = (date: string, time: string) => fromSofiaDateTime(date, time);
+  const ids: number[] = [];
+
+  beforeAll(async () => {
+    const [sport] = await db
+      .insert(sports)
+      .values({ slug: `instr-up-sport-${stamp}`, name: "IU Sport" })
+      .returning();
+    sportId = sport.id;
+    const [a] = await db
+      .insert(instructors)
+      .values({ slug: `instr-up-a-${stamp}`, name: "IU A" })
+      .returning();
+    instrA = a.id;
+    const [b] = await db
+      .insert(instructors)
+      .values({ slug: `instr-up-b-${stamp}`, name: "IU B" })
+      .returning();
+    instrB = b.id;
+
+    async function add(
+      instructorId: number,
+      date: string,
+      time: string,
+      over: Partial<typeof classSessions.$inferInsert> = {}
+    ) {
+      const startTime = at(date, time);
+      const [r] = await db
+        .insert(classSessions)
+        .values({
+          sportId,
+          instructorId,
+          startTime,
+          endTime: new Date(startTime.getTime() + 45 * 60_000),
+          capacity: 8,
+          priceCents: 600,
+          ...over,
+        })
+        .returning();
+      ids.push(r.id);
+      return r.id;
+    }
+
+    // IA: future session, a cancelled one and one beyond the 14-day window.
+    await add(instrA, "2026-10-14", "18:00");
+    await add(instrA, "2026-10-15", "19:00", { cancelledAt: new Date() });
+    await add(instrA, "2026-10-27", "18:00"); // day 15 — outside the window
+    // IB: a future session that must NOT appear for IA, plus one already started.
+    await add(instrB, "2026-10-14", "07:00");
+    await add(instrA, "2026-10-12", "08:00"); // started before NOW
+  });
+
+  afterAll(async () => {
+    await db.delete(classSessions).where(eq(classSessions.sportId, sportId));
+    await db.delete(instructors).where(eq(instructors.id, instrA));
+    await db.delete(instructors).where(eq(instructors.id, instrB));
+    await db.delete(sports).where(eq(sports.id, sportId));
+  });
+
+  it("returns only that instructor's future non-cancelled sessions in the 14-day window, in time order", async () => {
+    const rows = await getInstructorUpcomingSessions(`instr-up-a-${stamp}`, NOW);
+    const mine = rows.filter((r) => ids.includes(r.id)).map((r) => r.id);
+    expect(mine).toHaveLength(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].instructorSlug).toBe(`instr-up-a-${stamp}`);
+    expect(rows[0].instructorName).toBe("IU A");
+    expect(rows[0].startTime).toEqual(at("2026-10-14", "18:00"));
+    expect(rows[0].sportName).toBe("IU Sport");
+  });
+
+  it("returns nothing for an unknown instructor", async () => {
+    expect(await getInstructorUpcomingSessions(`instr-up-nobody-${stamp}`, NOW)).toEqual([]);
+  });
+
+  it("the other instructor sees only their own session", async () => {
+    const rows = await getInstructorUpcomingSessions(`instr-up-b-${stamp}`, NOW);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].instructorSlug).toBe(`instr-up-b-${stamp}`);
   });
 });
