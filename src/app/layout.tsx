@@ -87,6 +87,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </a>
               </p>
               <p className="mt-4 text-sm text-paper/60">
+                <Link href="/schedule" className="hover:text-accent">
+                  График
+                </Link>{" "}
+                ·{" "}
+                <Link href="/#classes" className="hover:text-accent">
+                  Тренировки
+                </Link>{" "}
+                ·{" "}
+                <Link href="/instructors" className="hover:text-accent">
+                  Инструктори
+                </Link>
+              </p>
+              <p className="mt-2 text-sm text-paper/60">
                 <Link href="/terms" className="hover:text-accent">
                   Общи условия
                 </Link>{" "}
