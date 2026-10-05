@@ -25,6 +25,15 @@ export default function HeaderNav({
   return (
     <>
       <nav className="hidden items-center gap-5 text-sm font-medium sm:flex">
+        <Link href="/#classes" className="hover:text-accent">
+          Тренировки
+        </Link>
+        <Link href="/schedule" className="hover:text-accent">
+          График
+        </Link>
+        <Link href="/instructors" className="hover:text-accent">
+          Инструктори
+        </Link>
         <Link href="/gallery" className="hover:text-accent">
           Галерия
         </Link>
@@ -106,6 +115,15 @@ export default function HeaderNav({
         className="mobile-menu absolute left-0 right-0 top-full border-b-2 border-accent bg-ink px-4 py-4 text-sm font-medium sm:hidden"
       >
         <div className="flex flex-col gap-4">
+          <Link href="/#classes" onClick={() => setOpen(false)}>
+            Тренировки
+          </Link>
+          <Link href="/schedule" onClick={() => setOpen(false)}>
+            График
+          </Link>
+          <Link href="/instructors" onClick={() => setOpen(false)}>
+            Инструктори
+          </Link>
           <Link href="/gallery" onClick={() => setOpen(false)}>
             Галерия
           </Link>

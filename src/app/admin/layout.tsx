@@ -22,12 +22,12 @@ export default async function AdminLayout({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <nav className="mb-6 flex gap-4 border-b border-neutral-200 pb-4 text-sm font-medium">
+      <nav className="mb-6 flex flex-wrap gap-x-4 gap-y-2 border-b border-neutral-200 pb-4 text-sm font-medium">
         <Link href="/admin">Табло</Link>
         <Link href="/admin/sessions">Часове</Link>
         <Link href="/admin/schedule">График (шаблон)</Link>
         <Link href="/admin/bookings">Резервации</Link>
-        <Link href="/admin/sports">Спортове</Link>
+        <Link href="/admin/sports">Тренировки</Link>
         <Link href="/admin/instructors">Инструктори</Link>
         <Link href="/admin/gallery">Галерия</Link>
       </nav>

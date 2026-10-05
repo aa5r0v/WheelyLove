@@ -43,7 +43,7 @@ export default async function AdminBookingsPage() {
             <tr>
               <th className="px-4 py-2">Клиент</th>
               <th className="px-4 py-2">Телефон</th>
-              <th className="px-4 py-2">Спорт</th>
+              <th className="px-4 py-2">Тренировка</th>
               <th className="px-4 py-2">Час</th>
               <th className="px-4 py-2">Цена</th>
               <th className="px-4 py-2">Плащане</th>

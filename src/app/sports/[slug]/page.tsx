@@ -11,11 +11,12 @@ import {
   sports,
   waitlistEntries,
 } from "@/db/schema";
-import { formatDateLong, formatTime } from "@/lib/format";
+import { formatDateLong, formatPrice, formatTime } from "@/lib/format";
 import BookButton from "./book-button";
 import WaitlistButton from "./waitlist-button";
 import { Reveal, StaggerGrid } from "@/app/reveal";
 import { sportPosters } from "@/lib/sport-images";
+import { LEVEL_LABELS } from "@/lib/trainings";
 
 export default async function SportPage({
   params,
@@ -108,6 +109,24 @@ export default async function SportPage({
               {sport.name}
             </h1>
             <p className="mt-4 max-w-lg text-paper/70">{sport.description}</p>
+            <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <div>
+                <dt className="text-xs text-paper/50">Ниво</dt>
+                <dd>{LEVEL_LABELS[sport.level]}</dd>
+              </div>
+              {sport.defaultDurationMin && (
+                <div>
+                  <dt className="text-xs text-paper/50">Продължителност</dt>
+                  <dd>{sport.defaultDurationMin} мин</dd>
+                </div>
+              )}
+              {sport.defaultPriceCents !== null && (
+                <div>
+                  <dt className="text-xs text-paper/50">Цена</dt>
+                  <dd>{formatPrice(sport.defaultPriceCents)}</dd>
+                </div>
+              )}
+            </dl>
           </div>
           {sportPosters[sport.slug] && (
             <Image
@@ -123,10 +142,16 @@ export default async function SportPage({
       </section>
 
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+        <Link
+          href={`/schedule?sport=${sport.slug}`}
+          className="font-display mb-8 inline-flex min-h-11 items-center bg-accent px-5 text-sm tracking-wide text-accent-ink"
+        >
+          Виж в графика →
+        </Link>
         <div className="space-y-10">
           {grouped.size === 0 && (
             <p className="text-ink/50">
-              Все още няма насрочени часове за този спорт.
+              Все още няма насрочени часове за тази тренировка.
             </p>
           )}
           {[...grouped.entries()].map(([date, sessionsOnDate]) => (

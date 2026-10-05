@@ -10,7 +10,7 @@ export default async function AdminSportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Спортове</h1>
+      <h1 className="text-2xl font-bold">Тренировки</h1>
 
       <div className="mt-6 space-y-2">
         {allSports.map((s) => (
@@ -87,7 +87,7 @@ export default async function AdminSportsPage() {
           type="submit"
           className="rounded-md bg-neutral-900 px-4 py-1.5 text-white sm:col-span-5"
         >
-          Добави спорт
+          Добави тренировка
         </button>
       </form>
     </div>
