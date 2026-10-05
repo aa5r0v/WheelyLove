@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { formatDateTimeShort } from "@/lib/format";
 import { bookings, classSessions, sports } from "@/db/schema";
 import { cancelBooking, confirmCashBooking } from "../actions";
+import { requireAdminPage } from "@/lib/admin-page";
 
 const statusLabels: Record<string, string> = {
   pending: "Плащане на място",
@@ -16,6 +17,7 @@ const paymentLabels: Record<string, string> = {
 };
 
 export default async function AdminBookingsPage() {
+  await requireAdminPage();
   const db = getDb();
   const allBookings = await db
     .select({

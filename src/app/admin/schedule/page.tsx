@@ -5,8 +5,10 @@ import { createTemplate } from "../actions";
 import GenerateButton from "./generate-button";
 import TemplateFields from "./template-fields";
 import TemplateRow from "./template-row";
+import { requireAdminPage } from "@/lib/admin-page";
 
 export default async function AdminSchedulePage() {
+  await requireAdminPage();
   const db = getDb();
   const allSports = await db.select({ id: sports.id, name: sports.name }).from(sports).orderBy(asc(sports.name));
   const allInstructors = await db

@@ -3,8 +3,10 @@ import { getDb } from "@/db";
 import { instructors, user } from "@/db/schema";
 import { createInstructor, deleteInstructor, removeInstructorAccess } from "../actions";
 import InstructorAccess from "./instructor-access";
+import { requireAdminPage } from "@/lib/admin-page";
 
 export default async function AdminInstructorsPage() {
+  await requireAdminPage();
   const db = getDb();
   const all = await db
     .select({

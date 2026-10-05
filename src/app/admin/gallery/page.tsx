@@ -2,8 +2,10 @@ import { desc } from "drizzle-orm";
 import { getDb } from "@/db";
 import { galleryItems } from "@/db/schema";
 import { deleteGalleryItem, uploadGalleryItem } from "../actions";
+import { requireAdminPage } from "@/lib/admin-page";
 
 export default async function AdminGalleryPage() {
+  await requireAdminPage();
   const db = getDb();
   const items = await db
     .select()

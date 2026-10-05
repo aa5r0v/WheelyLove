@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings, classSessions } from "@/db/schema";
+import { requireAdminPage } from "@/lib/admin-page";
 
 export default async function AdminDashboard() {
+  await requireAdminPage();
   const db = getDb();
 
   const [[{ totalSessions }], [{ totalBookings }], [{ revenueCents }]] =

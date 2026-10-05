@@ -3,8 +3,10 @@ import { sports } from "@/db/schema";
 import { createSport } from "../actions";
 import SportRow from "./sport-row";
 import { LEVEL_LABELS, SPORT_LEVELS } from "@/lib/trainings";
+import { requireAdminPage } from "@/lib/admin-page";
 
 export default async function AdminSportsPage() {
+  await requireAdminPage();
   const db = getDb();
   const allSports = await db.select().from(sports);
 

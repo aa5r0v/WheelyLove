@@ -3,8 +3,10 @@ import { getDb } from "@/db";
 import { classSessions, instructors, sports } from "@/db/schema";
 import { createSession } from "../actions";
 import SessionRow from "./session-row";
+import { requireAdminPage } from "@/lib/admin-page";
 
 export default async function AdminSessionsPage() {
+  await requireAdminPage();
   const db = getDb();
   const allSports = await db.select().from(sports).orderBy(asc(sports.name));
   const allInstructors = await db
