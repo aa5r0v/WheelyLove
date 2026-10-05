@@ -25,12 +25,20 @@ export function safeNext(value: string | null | undefined): string {
   } catch {
     // Malformed %-sequences stay as given; the check below still applies to them.
   }
-  return isSafeRelativePath(decoded) ? decoded : DEFAULT_NEXT;
+  // Both forms must be safe; the ORIGINAL is returned so that legitimately
+  // encoded query values (e.g. "?sport=a%26b") are not split apart.
+  return isSafeRelativePath(value) && isSafeRelativePath(decoded) ? value : DEFAULT_NEXT;
 }
 
 // /sign-in?next=<sanitized target>
 export function signInUrl(next: string): string {
   return `/sign-in?next=${encodeURIComponent(safeNext(next))}`;
+}
+
+// Where the email-verification letter leads: the sign-in page (no automatic
+// session - see src/lib/auth.ts), with a "confirmed" note and the way back.
+export function verifiedSignInUrl(next: string | null | undefined): string {
+  return `/sign-in?verified=1&next=${encodeURIComponent(safeNext(next))}`;
 }
 
 // The sign-in link for a guest tapping a session button: keeps the current page

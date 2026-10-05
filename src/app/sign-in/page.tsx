@@ -15,6 +15,7 @@ export default async function SignInPage({
     <SignInForm
       googleEnabled={isGoogleEnabled()}
       oauthError={!!sp.error}
+      verified={sp.verified === "1"}
       next={typeof rawNext === "string" ? rawNext : undefined}
     />
   );

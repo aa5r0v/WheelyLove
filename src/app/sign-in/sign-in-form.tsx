@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import GoogleButton from "@/app/google-button";
 import ResendVerification from "@/app/resend-verification";
-import { safeNext } from "@/lib/safe-next";
+import { safeNext, verifiedSignInUrl } from "@/lib/safe-next";
 
 function errorText(code: string | null | undefined) {
   if (code === "EMAIL_NOT_VERIFIED") {
@@ -21,10 +21,13 @@ function errorText(code: string | null | undefined) {
 export default function SignInForm({
   googleEnabled,
   oauthError,
+  verified,
   next,
 }: {
   googleEnabled: boolean;
   oauthError: boolean;
+  // Arrived from the email-verification letter (the email is confirmed now).
+  verified?: boolean;
   // Where to go after signing in (the page the guest came from); sanitized.
   next?: string;
 }) {
@@ -50,7 +53,7 @@ export default function SignInForm({
     const { error: err } = await authClient.signIn.email({
       email,
       password,
-      callbackURL: target,
+      callbackURL: verifiedSignInUrl(target),
     });
     if (err) {
       setError(errorText(err.code));
@@ -96,6 +99,9 @@ export default function SignInForm({
             className="mt-1 w-full border border-line/20 bg-paper px-3 py-2 text-sm outline-none transition-colors focus:border-accent-deep"
           />
         </div>
+        {verified && !error && (
+          <p className="text-sm text-green-700">Имейлът ти е потвърден. Влез, за да продължиш.</p>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         {needsVerification && email && (
           <div>

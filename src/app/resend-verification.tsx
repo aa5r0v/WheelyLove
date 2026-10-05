@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { resendOutcomeText } from "@/app/my-bookings/resend-outcome";
-import { safeNext } from "@/lib/safe-next";
+import { verifiedSignInUrl } from "@/lib/safe-next";
 
 // The resend flow of the /my-bookings banner, reusable wherever booking is
 // blocked by an unverified email. callbackURL is where the letter takes the
@@ -24,7 +24,7 @@ export default function ResendVerification({
     // as "sent" - the user would wait for a letter that never comes.
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: safeNext(callbackURL),
+      callbackURL: verifiedSignInUrl(callbackURL),
     });
     if (error) {
       setErrorStatus(typeof error.status === "number" ? error.status : undefined);

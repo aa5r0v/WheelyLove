@@ -61,15 +61,13 @@ function createAuth() {
       // 24 h on purpose - the email copy says "валиден е 24 часа". The library
       // default is 3600 (1 h), see createEmailVerificationToken in better-auth.
       expiresIn: 60 * 60 * 24,
-      // Signing in the moment the email is confirmed: the verify-email token is
-      // a JWT signed with our secret, delivered to the address itself
-      // (better-auth email-verification.mjs:178-188), and the session is created
-      // for that account only AFTER emailVerified is set to true
-      // (email-verification.mjs:295-315). This keeps H1 intact: sign-up itself
-      // still creates no session (sign-up.mjs:155-156, 251 - requireEmailVerification
-      // skips auto sign-in), so registering someone else's address gives the
-      // attacker nothing - the session goes to whoever opens the letter.
-      autoSignInAfterVerification: true,
+      // NO autoSignInAfterVerification, on purpose: with it, clicking the link
+      // signs the clicker into the account - even one an attacker registered
+      // with the victim's address and the attacker's password (the victim would
+      // then book and save a phone in an account the attacker can log into),
+      // and an attacker's own unverified link becomes a one-click login CSRF.
+      // The letter leads to /sign-in?verified=1&next=… (verifiedSignInUrl),
+      // so the user must prove the password before any session exists.
       sendVerificationEmail: async ({ user, url }) => {
         await sendVerificationEmail({ to: user.email, url });
       },

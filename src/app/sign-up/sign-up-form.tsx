@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import GoogleButton from "@/app/google-button";
-import { safeNext } from "@/lib/safe-next";
+import { safeNext, verifiedSignInUrl } from "@/lib/safe-next";
 
 const MIN_PASSWORD = 10;
 
@@ -47,9 +47,9 @@ export default function SignUpForm({
       email,
       password,
       // Lands in the verification letter: after confirming the email the user
-      // returns to the page they were booking from (and is signed in — see
-      // autoSignInAfterVerification in src/lib/auth.ts).
-      callbackURL: target,
+      // signs in and returns to the page they were booking from (no automatic
+      // session - see src/lib/auth.ts).
+      callbackURL: verifiedSignInUrl(target),
     });
     if (err) {
       setError(errorText(err.code));

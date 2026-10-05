@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NEXT, safeNext, sessionSignInHref, signInUrl } from "./safe-next";
+import { DEFAULT_NEXT, safeNext, sessionSignInHref, signInUrl, verifiedSignInUrl } from "./safe-next";
 
 describe("safeNext", () => {
   it("keeps clean relative paths (with query) untouched", () => {
@@ -56,8 +56,22 @@ describe("safeNext", () => {
     expect(safeNext("/\x7f")).toBe(DEFAULT_NEXT);
   });
 
-  it("decodes a once-encoded legitimate path", () => {
-    expect(safeNext("%2Fschedule%3Fd%3D2026-10-20")).toBe("/schedule?d=2026-10-20");
+  // Changed after the security review: the ORIGINAL value is returned (both it
+  // and its decoded form must be safe), so encoded query values stay intact.
+  // A fully encoded path is not a "/…" path and falls back to the default.
+  it("keeps encoded query values intact instead of decoding them", () => {
+    expect(safeNext("/schedule?sport=a%26b&d=2026-10-20")).toBe("/schedule?sport=a%26b&d=2026-10-20");
+    expect(safeNext("%2Fschedule%3Fd%3D2026-10-20")).toBe(DEFAULT_NEXT);
+  });
+});
+
+describe("verifiedSignInUrl", () => {
+  it("leads the verification letter to sign-in (no automatic session) with the way back", () => {
+    expect(verifiedSignInUrl("/sports/spinning?session=5")).toBe(
+      "/sign-in?verified=1&next=%2Fsports%2Fspinning%3Fsession%3D5"
+    );
+    expect(verifiedSignInUrl("//evil.com")).toBe("/sign-in?verified=1&next=%2Fschedule");
+    expect(verifiedSignInUrl(undefined)).toBe("/sign-in?verified=1&next=%2Fschedule");
   });
 });
 

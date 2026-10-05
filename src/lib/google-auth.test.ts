@@ -56,6 +56,13 @@ describe("Better Auth configuration", { timeout: 30_000 }, () => {
     ).rejects.toThrow();
   });
 
+  it("clicking the verification link never signs anyone in (security review: pre-registered account takeover / login CSRF)", async () => {
+    const auth = await freshAuth({});
+    const ctx = await auth.$context;
+    const ev = ctx.options.emailVerification as { autoSignInAfterVerification?: boolean } | undefined;
+    expect(ev?.autoSignInAfterVerification).toBeFalsy();
+  });
+
   it("with only one of the variables the provider does not exist", async () => {
     const auth = await freshAuth({ GOOGLE_CLIENT_ID: "only-id" });
     const ctx = await auth.$context;
