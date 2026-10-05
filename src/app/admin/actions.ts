@@ -228,7 +228,15 @@ export async function linkInstructorAccess(
   if (!email) return { error: "Въведи имейл." };
   const r = await linkInstructorAccount({ email, instructor: { id: instructorId } });
   revalidatePath("/admin/instructors");
-  return r.ok ? { ok: `Свързан акаунт: ${r.email}` } : { error: r.message };
+  return r.ok
+    ? {
+        ok:
+          `Свързан акаунт: ${r.email}.` +
+          (r.credentialsReset
+            ? " Старите сесии и паролата са обезсилени: инструкторът първо задава парола през „Забравена парола“."
+            : ""),
+      }
+    : { error: r.message };
 }
 
 export async function removeInstructorAccess(instructorId: number) {

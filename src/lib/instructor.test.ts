@@ -24,7 +24,17 @@ vi.mock("next/headers", () => ({ headers: async () => headerState.headers }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { getDb } from "@/db";
-import { bookings, classSessions, instructors, sports, user as userTable } from "@/db/schema";
+import { hashPassword } from "better-auth/crypto";
+import {
+  account as accountTable,
+  bookings,
+  classSessions,
+  instructors,
+  session as sessionTable,
+  sports,
+  user as userTable,
+} from "@/db/schema";
+import { getAuth } from "@/lib/auth";
 import { getSession } from "@/lib/auth";
 import {
   getInstructorForSession,
@@ -36,7 +46,7 @@ import {
 } from "@/lib/instructor";
 import { markAttendance } from "@/app/instructor/actions";
 import { linkInstructorAccess, removeInstructorAccess } from "@/app/admin/actions";
-import { deleteUser, signInCookie, signUpUser, verifyUserEmail } from "@/lib/test-helpers";
+import { DEFAULT_PASSWORD, deleteUser, signInCookie, signUpUser, verifyUserEmail } from "@/lib/test-helpers";
 
 const db = getDb();
 const tag = `ins-${Date.now()}`;
@@ -363,7 +373,14 @@ describe("admin: link / unlink an account", () => {
     expect(await roleOf(target.id)).toBe("instructor");
     expect(await linkOf(t.id)).toBe(target.id);
 
+    // Linking signs the account out; after a fresh password the access works.
     as(target.cookie);
+    expect(await getInstructorForSession()).toBeNull();
+    await db
+      .update(accountTable)
+      .set({ password: await hashPassword("fresh-password-123456") })
+      .where(eq(accountTable.userId, target.id));
+    as(await signInCookie(target.email, "fresh-password-123456"));
     expect((await getInstructorForSession())?.id).toBe(t.id);
 
     as(await adminCookie("lk2-admin2"));
@@ -396,5 +413,65 @@ describe("admin: link / unlink an account", () => {
     expect((await linkInstructorAccess(t.id, {}, form(ub.email))).error).toMatch(/вече е свързан с друг/);
     expect(await linkOf(t.id)).toBeNull();
     expect(await roleOf(unver.id)).toBe("user");
+  });
+});
+
+describe("pre-registration takeover (H1) and access removal (L3)", () => {
+  const form = (email: string) => {
+    const f = new FormData();
+    f.set("email", email);
+    return f;
+  };
+  const sessionsOf = async (id: string) =>
+    (await db.select().from(sessionTable).where(eq(sessionTable.userId, id))).length;
+  const passwordOf = async (id: string) =>
+    (await db.select({ p: accountTable.password }).from(accountTable).where(eq(accountTable.userId, id)))[0].p;
+  const adminCookie = async (n: string) => (await makeUser(n, "admin")).cookie;
+
+  it("web link: the old password no longer signs in and old sessions are deleted", async () => {
+    const t = await makeInstructor("h1w", null);
+    const attacker = await makeUser("h1w-victim", "user"); // registered by the attacker, email verified by the owner
+    expect(await sessionsOf(attacker.id)).toBeGreaterThan(0);
+    as(await adminCookie("h1w-admin"));
+    const r = await linkInstructorAccess(t.id, {}, form(attacker.email));
+    expect(r.ok).toMatch(/Забравена парола/);
+    expect(await sessionsOf(attacker.id)).toBe(0);
+    expect(await passwordOf(attacker.id)).toBeNull();
+    await expect(signInCookie(attacker.email, DEFAULT_PASSWORD)).rejects.toThrow();
+    await expect(
+      getAuth().api.signInEmail({ body: { email: attacker.email, password: DEFAULT_PASSWORD }, headers: new Headers() })
+    ).rejects.toThrow();
+  });
+
+  it("re-linking the account that is already linked to the same instructor keeps password and sessions", async () => {
+    const t = await makeInstructor("h1same", null);
+    const u = await makeUser("h1same-user", "user");
+    as(await adminCookie("h1same-admin"));
+    await linkInstructorAccess(t.id, {}, form(u.email));
+    await db
+      .update(accountTable)
+      .set({ password: await hashPassword("fresh-password-123456") })
+      .where(eq(accountTable.userId, u.id));
+    await signInCookie(u.email, "fresh-password-123456");
+    const before = await sessionsOf(u.id);
+    const r = await linkInstructorAccess(t.id, {}, form(u.email));
+    expect(r.error).toBeUndefined();
+    expect(await passwordOf(u.id)).not.toBeNull();
+    expect(await sessionsOf(u.id)).toBe(before);
+  });
+
+  it("removing the access deletes the account's sessions", async () => {
+    const t = await makeInstructor("l3", null);
+    const u = await makeUser("l3-user", "user");
+    as(await adminCookie("l3-admin"));
+    await linkInstructorAccess(t.id, {}, form(u.email));
+    await db
+      .update(accountTable)
+      .set({ password: await hashPassword("fresh-password-123456") })
+      .where(eq(accountTable.userId, u.id));
+    await signInCookie(u.email, "fresh-password-123456");
+    expect(await sessionsOf(u.id)).toBeGreaterThan(0);
+    await removeInstructorAccess(t.id);
+    expect(await sessionsOf(u.id)).toBe(0);
   });
 });

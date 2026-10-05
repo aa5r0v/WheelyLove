@@ -22,7 +22,8 @@ vi.mock("@/lib/email", () => ({
 
 import { getDb } from "../src/db";
 import { instructors, session as sessionTable, user as userTable } from "../src/db/schema";
-import { deleteUser, signInCookie, signUpUser, verifyUserEmail } from "../src/lib/test-helpers";
+import { getAuth } from "../src/lib/auth";
+import { DEFAULT_PASSWORD, deleteUser, signInCookie, signUpUser, verifyUserEmail } from "../src/lib/test-helpers";
 
 const execFileAsync = promisify(execFile);
 const db = getDb();
@@ -94,5 +95,10 @@ describe("set-instructor", () => {
     const [ins] = await db.select().from(instructors).where(eq(instructors.slug, slug));
     expect(ins.userId).toBe(u.id);
     expect(await db.select().from(sessionTable).where(eq(sessionTable.userId, u.id))).toHaveLength(0);
+    // H1: the password set before the link (possibly by an attacker) is dead.
+    expect(r.stdout).toMatch(/Забравена парола/);
+    await expect(
+      getAuth().api.signInEmail({ body: { email, password: DEFAULT_PASSWORD }, headers: new Headers() })
+    ).rejects.toThrow();
   });
 });

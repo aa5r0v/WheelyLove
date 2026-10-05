@@ -13,7 +13,7 @@ async function main() {
     process.exit(1);
   }
 
-  const r = await linkInstructorAccount({ email, instructor: { slug }, revokeSessions: true });
+  const r = await linkInstructorAccount({ email, instructor: { slug } });
   if (!r.ok) {
     const hint: Record<string, string> = {
       user_not_found: `No user with email ${email}. Sign up in the app first.`,
@@ -28,7 +28,13 @@ async function main() {
     console.error(hint[r.error] ?? r.message);
     process.exit(1);
   }
-  console.log(`${email} is now the instructor ${slug}. Existing sessions were signed out.`);
+  console.log(`${email} is now the instructor ${slug}.`);
+  if (r.credentialsReset) {
+    console.log(
+      "Existing sessions were signed out and the account password was invalidated: " +
+        "the instructor must first set a new one via “Забравена парола” (forgot password)."
+    );
+  }
 }
 
 // The DB connection pool keeps the process alive, so exit explicitly

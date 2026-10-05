@@ -1,12 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
-import { instructors, session, user } from "../db/schema";
+import { account, instructors, session, user } from "../db/schema";
 
 // Linking an instructor to a login account. Relative imports on purpose: the
 // CLI (scripts/set-instructor.ts) runs from the slim `migrate` image.
 
 export type LinkResult =
-  | { ok: true; userId: string; email: string }
+  | { ok: true; userId: string; email: string; credentialsReset: boolean }
   | {
       ok: false;
       error:
@@ -38,7 +38,6 @@ function fail(error: keyof typeof MESSAGES): LinkResult {
 export async function linkInstructorAccount(opts: {
   email: string;
   instructor: { id: number } | { slug: string };
-  revokeSessions?: boolean;
 }): Promise<LinkResult> {
   const email = opts.email.trim().toLowerCase();
   const target = opts.instructor;
@@ -73,8 +72,20 @@ export async function linkInstructorAccount(opts: {
     if (promoted.length === 0) return fail("is_admin");
 
     await tx.update(instructors).set({ userId: u.id }).where(eq(instructors.id, ins.id));
-    if (opts.revokeSessions) await tx.delete(session).where(eq(session.userId, u.id));
-    return { ok: true, userId: u.id, email };
+    // The account may have been pre-registered by someone else with the
+    // instructor's address (the owner then verified THEIR link). Like
+    // set-admin: always sign everything out and invalidate the credential
+    // password, so the instructor must set a fresh one via "forgot password".
+    // Skipped only when the account is already linked to this very instructor.
+    const alreadyLinked = ins.userId === u.id;
+    if (!alreadyLinked) {
+      await tx.delete(session).where(eq(session.userId, u.id));
+      await tx
+        .update(account)
+        .set({ password: null })
+        .where(and(eq(account.userId, u.id), eq(account.providerId, "credential")));
+    }
+    return { ok: true, userId: u.id, email, credentialsReset: !alreadyLinked };
   });
 }
 
@@ -89,6 +100,7 @@ export async function unlinkInstructorAccount(instructorId: number): Promise<{ o
       .where(eq(instructors.id, instructorId));
     if (!ins?.userId) return { ok: false };
     await tx.update(instructors).set({ userId: null }).where(eq(instructors.id, instructorId));
+    await tx.delete(session).where(eq(session.userId, ins.userId));
     await tx
       .update(user)
       .set({ role: "user" })
