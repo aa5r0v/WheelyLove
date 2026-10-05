@@ -300,3 +300,23 @@ rate-limit зона (`wl_admin_upload`, 6/мин, burst 3), броена по р
 - Билд на VPS ползва до 1.5 от 4 ядра няколко минути -> пускайте в тих час; RAM е с твърд таван 2 GB.
 - Loop диск: 6 GB се резервират веднага от ~60 GB свободни.
 - Порт 5610 и подмрежите 172.28.61/62.0/24 са свободни към момента на проверката (read-only); `install.sh` ги проверява отново.
+
+## 12. Имейли през Gmail (Google Workspace SMTP relay) вместо Resend
+
+Писмата (потвърждение на имейл, нова парола, резервации) тръгват през Google Workspace на PurePoint,
+от `adelina@purepoint.bg`, когато в `/srv/wheelylove/.env` има `SMTP_HOST`. Без него остава Resend.
+
+1. Google Admin (admin.google.com) → Apps → Google Workspace → Gmail → Routing → **SMTP relay service** → Add:
+   - Allowed senders: **Only addresses in my domains**
+   - Authentication: **Only accept mail from the specified IP addresses** → `164.138.216.72`
+   - Encryption: **Require TLS encryption** (без „Require SMTP Authentication“ — няма парола на сървъра)
+2. В `/srv/wheelylove/.env`:
+   ```
+   SMTP_HOST=smtp-relay.gmail.com
+   SMTP_PORT=587
+   EMAIL_FROM=WheelyLove <adelina@purepoint.bg>
+   ```
+   (`SMTP_USER`/`SMTP_PASS` само ако някога се ползва app password вместо IP allowlist.)
+3. Защитната стена пуска изходящ порт 587 само от мрежата на app (`EGRESS_PORTS`, по подразбиране `80,443,587`);
+   след промяна: `sudo /usr/local/sbin/wheelylove-firewall apply` или повторно `install.sh`.
+4. Отговорите на писмата отиват на студиото (`replyTo`), не на подателя.

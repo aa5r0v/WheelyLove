@@ -7,20 +7,20 @@
 # Scope (nothing else on the box is touched):
 #   * DOCKER-USER gets ONE jump, matched on  -i wl-egress0 AND -s 172.28.61.0/24
 #       -> chain WHEELYLOVE:  drops the app's traffic to other hosts/containers/VPN/private ranges,
-#                             allows only web ports (default 80,443) to the public internet.
+#                             allows only web ports + SMTP submission (default 80,443,587) to the public internet.
 #   * INPUT gets ONE jump per WheelyLove bridge (-i wl-egress0 / wl-internal0)
 #       -> chain WHEELYLOVE-IN: a container may NOT open connections to the host itself
 #                               (QHub :4000, netdata :19999, postgres, ...). Replies are allowed.
 #     (Packets addressed to the host itself go through INPUT, not FORWARD, so the DOCKER-USER
 #      "--dst-type LOCAL" rule alone would not stop them - that is why INPUT is covered too.)
 #
-# Env override: EGRESS_PORTS="80,443" (default). EGRESS_PORTS="" = allow every port to the public internet.
+# Env override: EGRESS_PORTS="80,443,587" (default). EGRESS_PORTS="" = allow every port to the public internet.
 set -euo pipefail
 
 EGRESS_SUBNET="172.28.61.0/24"
 EGRESS_BR="wl-egress0"
 INTERNAL_BR="wl-internal0"
-EGRESS_PORTS="${EGRESS_PORTS-80,443}"
+EGRESS_PORTS="${EGRESS_PORTS-80,443,587}"   # 587 = SMTP submission (Google Workspace SMTP relay)
 # Upstream DNS servers the app may reach on port 53 (env override: EGRESS_DNS="1.1.1.1 ...").
 # Default: the IPv4 nameservers systemd-resolved uses on this host.
 EGRESS_DNS="${EGRESS_DNS-$(awk '/^nameserver [0-9.]+$/ {print $2}' /run/systemd/resolve/resolv.conf 2>/dev/null)}"

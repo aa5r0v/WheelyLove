@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import nodemailer, { type Transporter } from "nodemailer";
 import { formatDateTimeLong } from "./format";
 
 let _resend: Resend | null = null;
@@ -8,7 +9,10 @@ function getResend() {
   return _resend;
 }
 
-const FROM = `WheelyLove <reservations@${process.env.RESEND_EMAIL_DOMAIN}>`;
+// EMAIL_FROM (e.g. "WheelyLove <adelina@purepoint.bg>") wins; the relay only
+// accepts senders from the Workspace domain.
+const FROM =
+  process.env.EMAIL_FROM?.trim() || `WheelyLove <reservations@${process.env.RESEND_EMAIL_DOMAIN}>`;
 
 // reservations@ has no mailbox — route customer replies to the studio's inbox.
 const STUDIO_EMAIL = "wheelylove@abv.bg";
@@ -105,13 +109,15 @@ async function sendEmail(params: {
   kind: "auth" | "transactional";
   type: string;
 }) {
-  const { data, error } = await getResend().emails.send({
-    from: FROM,
-    replyTo: STUDIO_EMAIL,
-    to: [params.to],
-    subject: params.subject,
-    html: params.html,
-  });
+  const { data, error } = getSmtp()
+    ? await sendViaSmtp(params)
+    : await getResend().emails.send({
+        from: FROM,
+        replyTo: STUDIO_EMAIL,
+        to: [params.to],
+        subject: params.subject,
+        html: params.html,
+      });
   if (error) {
     // Clear marker for log searches; no letter content, no full address.
     console.error(
@@ -119,10 +125,51 @@ async function sendEmail(params: {
       error
     );
     if (params.kind === "auth") {
-      throw new Error(`Resend rejected the ${params.type} email.`);
+      throw new Error(`The mail server rejected the ${params.type} email.`);
     }
   }
   return data;
+}
+
+// SMTP transport (Google Workspace SMTP relay: smtp-relay.gmail.com:587, the
+// VPS IP is allowed in the Workspace admin console, no password). Used when
+// SMTP_HOST is set; otherwise Resend. Same { data, error } shape as Resend so
+// the failure handling above is identical for both.
+let _smtp: Transporter | null | undefined;
+
+function getSmtp(): Transporter | null {
+  if (_smtp !== undefined) return _smtp;
+  const host = process.env.SMTP_HOST?.trim();
+  if (!host) return (_smtp = null);
+  const user = process.env.SMTP_USER?.trim();
+  _smtp = nodemailer.createTransport({
+    host,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: Number(process.env.SMTP_PORT || 587) === 465,
+    requireTLS: true,
+    // Google's relay rejects a bare container hostname in EHLO.
+    name: process.env.SMTP_HELO_NAME || new URL(SITE_URL).hostname,
+    auth: user ? { user, pass: process.env.SMTP_PASS ?? "" } : undefined,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+  return _smtp;
+}
+
+async function sendViaSmtp(params: { to: string; subject: string; html: string }) {
+  try {
+    const info = await getSmtp()!.sendMail({
+      from: FROM,
+      replyTo: STUDIO_EMAIL,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+    return { data: { id: info.messageId }, error: null };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? { message: err.message } : { message: String(err) } };
+  }
 }
 
 type BookingEmailInfo = {
