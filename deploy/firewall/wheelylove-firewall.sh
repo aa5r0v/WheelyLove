@@ -21,6 +21,9 @@ EGRESS_SUBNET="172.28.61.0/24"
 EGRESS_BR="wl-egress0"
 INTERNAL_BR="wl-internal0"
 EGRESS_PORTS="${EGRESS_PORTS-80,443}"
+# Upstream DNS servers the app may reach on port 53 (env override: EGRESS_DNS="1.1.1.1 ...").
+# Default: the IPv4 nameservers systemd-resolved uses on this host.
+EGRESS_DNS="${EGRESS_DNS-$(awk '/^nameserver [0-9.]+$/ {print $2}' /run/systemd/resolve/resolv.conf 2>/dev/null)}"
 
 CH_FWD="WHEELYLOVE"
 CH_IN="WHEELYLOVE-IN"
@@ -59,6 +62,13 @@ apply() {
   for net in 0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 \
              172.16.0.0/12 192.0.0.0/24 192.168.0.0/16 198.18.0.0/15 224.0.0.0/3; do
     $IPT -A "$CH_FWD" -d "$net" -j DROP
+  done
+  # DNS: Docker's embedded resolver forwards the app's lookups (api.resend.com) to the host's
+  # upstream resolvers - the ones in /run/systemd/resolve/resolv.conf, because the host's own
+  # /etc/resolv.conf is the 127.0.0.53 stub. Allow port 53 to exactly those servers, nothing else.
+  for dns in $EGRESS_DNS; do
+    $IPT -A "$CH_FWD" -d "$dns" -p udp --dport 53 -j RETURN
+    $IPT -A "$CH_FWD" -d "$dns" -p tcp --dport 53 -j RETURN
   done
   if [ -n "$EGRESS_PORTS" ]; then
     $IPT -A "$CH_FWD" -p tcp -m multiport --dports "$EGRESS_PORTS" -j RETURN
