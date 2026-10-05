@@ -7,8 +7,7 @@
 #
 # Build is driven by deploy/deploy.sh (memory-limited buildx builder).
 # NEXT_PUBLIC_* values are baked into the JS bundle at BUILD time -> build args.
-# No secrets are stored in the image. CLERK_SECRET_KEY is offered to the build
-# step only as a BuildKit secret (never written to a layer).
+# No secrets are stored in the image; the app reads them from the environment at runtime.
 
 ARG NODE_IMAGE=node:22-alpine
 
@@ -38,25 +37,14 @@ FROM deps AS builder
 COPY . .
 
 ARG NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL
-ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL
-ARG NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL
-ARG NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL
 
 # Keep the Node heap below the builder container memory cap (2 GB, see deploy.sh).
 ENV NODE_OPTIONS=--max-old-space-size=1536
 
-# Empty optional args are unset (an empty string is not the same as "not set").
+# An empty NEXT_PUBLIC_APP_URL is unset (an empty string is not the same as "not set").
 # DATABASE_URL is a dummy: the db client connects lazily, nothing talks to it at build time.
-RUN --mount=type=secret,id=clerk_secret_key,required=false \
-    for v in NEXT_PUBLIC_APP_URL NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY NEXT_PUBLIC_CLERK_SIGN_IN_URL \
-             NEXT_PUBLIC_CLERK_SIGN_UP_URL NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL \
-             NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL; do \
-      eval "[ -n \"\$$v\" ] || unset $v"; \
-    done; \
-    if [ -s /run/secrets/clerk_secret_key ]; then export CLERK_SECRET_KEY="$(cat /run/secrets/clerk_secret_key)"; fi; \
-    export DATABASE_URL="postgres://build:build@127.0.0.1:1/build"; \
+RUN export DATABASE_URL="postgres://build:build@127.0.0.1:1/build"; \
+    [ -n "$NEXT_PUBLIC_APP_URL" ] || unset NEXT_PUBLIC_APP_URL; \
     npm run build
 
 # Fail early and clearly if next.config.ts does not have output: "standalone".

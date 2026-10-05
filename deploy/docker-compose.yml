@@ -6,7 +6,7 @@
 #
 # Networks
 #   wl-internal : internal:true  -> app <-> db only, NO route to the outside world
-#   wl-egress   : app only       -> outbound HTTPS (Clerk/Stripe/Resend/Twilio/R2);
+#   wl-egress   : app only       -> outbound HTTPS (Resend, for the emails);
 #                                   filtered by deploy/firewall/wheelylove-firewall.sh
 # Bridge names are fixed on purpose: the firewall rules match them.
 
@@ -34,6 +34,17 @@ services:
       # Built here from the same password the db uses (single source of truth).
       # Wins over any DATABASE_URL in the env file.
       DATABASE_URL: postgres://${POSTGRES_USER:-wheely}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-wheelylove}
+      # Uploaded media lives on the host disk (install.sh creates it, uid 10001)
+      # and is served by nginx straight from /srv/wheelylove/uploads.
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      # create_host_path:false = if the loop disk is NOT mounted, compose fails
+      # instead of creating (and silently filling) a directory on the main disk.
+      - type: bind
+        source: /srv/wheelylove/uploads
+        target: /data/uploads
+        bind:
+          create_host_path: false
     depends_on:
       db:
         condition: service_healthy

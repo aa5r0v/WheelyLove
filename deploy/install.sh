@@ -65,14 +65,16 @@ df -h "$WL_BASE" | sed 's/^/    /'
 
 # ------------------------------------------------------------------ 3. dirs, env, tools
 log "3/7 directories, .env, scripts"
-mkdir -p "$WL_BASE"/{pgdata,backups,releases,state,deploy}
+mkdir -p "$WL_BASE"/{pgdata,backups,releases,state,deploy,uploads}
 chown 70:70 "$WL_BASE/pgdata"; chmod 700 "$WL_BASE/pgdata"     # uid 70 = postgres in postgres:17-alpine
+# uid 10001 = the app user in the container; nginx (www-data) only needs to READ.
+chown 10001:10001 "$WL_BASE/uploads"; chmod 755 "$WL_BASE/uploads"
 chmod 700 "$WL_BASE/backups"
 [ -f "$WL_TAG_ENV" ] || tag_set "$WL_TAG_ENV" none
 if [ ! -f "$WL_ENV" ]; then
   ( umask 077; cp "$SRC/.env.production.example" "$WL_ENV" )
-  sed -i "s|CHANGE_ME_POSTGRES_PASSWORD|$(openssl rand -hex 24)|; s|CHANGE_ME_CRON_SECRET|$(openssl rand -hex 24)|" "$WL_ENV"
-  ok "created $WL_ENV with random POSTGRES_PASSWORD and CRON_SECRET"
+  sed -i "s|CHANGE_ME_POSTGRES_PASSWORD|$(openssl rand -hex 24)|; s|CHANGE_ME_CRON_SECRET|$(openssl rand -hex 24)|; s|CHANGE_ME_BETTER_AUTH_SECRET|$(openssl rand -hex 32)|" "$WL_ENV"
+  ok "created $WL_ENV with random POSTGRES_PASSWORD, CRON_SECRET and BETTER_AUTH_SECRET"
   echo "    >>> fill in the remaining CHANGE_ME values:  nano $WL_ENV"
 else
   ok "$WL_ENV exists (not touched)"

@@ -70,7 +70,7 @@ done
 ok "release $ID unpacked"
 
 OLD_TAG="$(tag_get "$WL_TAG_ENV")"
-trap 'rc=$?; [ -n "${SECRET_FILE:-}" ] && rm -f "$SECRET_FILE"; [ $rc -ne 0 ] && echo "deploy FAILED (exit $rc). Running app (tag: ${OLD_TAG:-none}) was not replaced unless stated above." >&2' EXIT
+trap 'rc=$?; [ $rc -ne 0 ] && echo "deploy FAILED (exit $rc). Running app (tag: ${OLD_TAG:-none}) was not replaced unless stated above." >&2' EXIT
 
 # ------------------------------------------------------------------ 3. build or load
 if [ -n "$APP_TAR" ]; then
@@ -101,24 +101,18 @@ else
   ok "builder limits verified: memory=$BUILDER_MEM"
 
   BUILD_ARGS=()
-  for k in NEXT_PUBLIC_APP_URL NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY NEXT_PUBLIC_CLERK_SIGN_IN_URL \
-           NEXT_PUBLIC_CLERK_SIGN_UP_URL NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL \
-           NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL; do
+  for k in NEXT_PUBLIC_APP_URL; do
     v="$(env_get "$WL_ENV" "$k")"
     [ -n "$v" ] && BUILD_ARGS+=(--build-arg "$k=$v")
   done
-  # Clerk secret as a BuildKit secret (not stored in any layer), via a root-only tmpfs file.
-  SECRET_FILE="$(umask 077; mktemp /dev/shm/wl-secret.XXXXXX)"
-  env_get "$WL_ENV" CLERK_SECRET_KEY > "$SECRET_FILE"
 
   echo "    building app image (this takes a few minutes)..."
   docker buildx build --builder "$BUILDER" --load --progress=plain \
     --target runner -t "wheelylove-app:$ID" \
-    "${BUILD_ARGS[@]}" --secret "id=clerk_secret_key,src=$SECRET_FILE" "$REL"
+    "${BUILD_ARGS[@]}" "$REL"
   echo "    building migrate image..."
   docker buildx build --builder "$BUILDER" --load --progress=plain \
     --target migrate -t "wheelylove-migrate:$ID" "$REL"
-  rm -f "$SECRET_FILE"; SECRET_FILE=""
   docker buildx stop "$BUILDER" >/dev/null 2>&1 || true   # frees the builder RAM, keeps the layer cache
   ok "images built: wheelylove-app:$ID, wheelylove-migrate:$ID"
 fi

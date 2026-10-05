@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# The production template is an example with placeholders only - keep it in git
+# (install.sh refuses to run without it).
+!deploy/.env.production.example
 
 # vercel
 .vercel
