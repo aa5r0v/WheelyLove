@@ -15,6 +15,20 @@
       "when": 1790796257628,
       "tag": "0001_bookings_active_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791184230934,
+      "tag": "0002_drop_stripe",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791184258333,
+      "tag": "0003_better_auth",
+      "breakpoints": true
     }
   ]
 }

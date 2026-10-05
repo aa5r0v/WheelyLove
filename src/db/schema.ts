@@ -3,6 +3,8 @@ import {
   pgTable,
   serial,
   text,
+  boolean,
+  bigint,
   integer,
   timestamp,
   varchar,
@@ -69,11 +71,8 @@ export const bookings = pgTable(
     userEmail: varchar("user_email", { length: 256 }).notNull(),
     userPhone: varchar("user_phone", { length: 32 }).notNull(),
     status: bookingStatusEnum("status").notNull().default("pending"),
-    paymentMethod: paymentMethodEnum("payment_method").notNull().default("card"),
-    stripeCheckoutSessionId: varchar("stripe_checkout_session_id", {
-      length: 256,
-    }),
-    stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 256 }),
+    // Плащането е само на място; стойността в enum-а "card" е наследена от стари данни.
+    paymentMethod: paymentMethodEnum("payment_method").notNull().default("cash"),
     reminderSentAt: timestamp("reminder_sent_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -107,3 +106,73 @@ export const galleryItems = pgTable("gallery_items", {
   caption: text("caption").default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// --------------------------------------------------------------- Better Auth
+// Self-hosted auth in our own Postgres. Property names must match Better Auth's
+// field names (the drizzle adapter maps by property, DB column names are free).
+
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  // "user" | "admin"; set only via scripts/set-admin.ts, never from the client.
+  role: text("role").notNull().default("user"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+});
+
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope: text("scope"),
+  // Only the credential provider stores a password here (scrypt hash).
+  password: text("password"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Built-in Better Auth rate limiter with storage: "database".
+export const rateLimit = pgTable(
+  "rate_limit",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    count: integer("count").notNull(),
+    // Epoch milliseconds (Better Auth stores a number, not a timestamp).
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (t) => [uniqueIndex("rate_limit_key_idx").on(t.key)]
+);
