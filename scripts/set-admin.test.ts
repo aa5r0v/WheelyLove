@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   email: vi.fn(async () => {}),
   verification: vi.fn(async () => {}),
   reset: vi.fn(async () => {}),
+  existing: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -19,11 +20,23 @@ vi.mock("@/lib/email", () => ({
   sendWaitlistSpotOpenEmail: mocks.email,
   sendVerificationEmail: mocks.verification,
   sendPasswordResetEmail: mocks.reset,
+  sendExistingAccountEmail: mocks.existing,
 }));
 
 import { getDb } from "../src/db";
-import { session as sessionTable, user as userTable } from "../src/db/schema";
-import { deleteUser, signInCookie, signUpUser, verifyUserEmail } from "../src/lib/test-helpers";
+import {
+  rateLimit as rateLimitTable,
+  session as sessionTable,
+  user as userTable,
+} from "../src/db/schema";
+import { getAuth } from "../src/lib/auth";
+import {
+  DEFAULT_PASSWORD,
+  deleteUser,
+  signInCookie,
+  signUpUser,
+  verifyUserEmail,
+} from "../src/lib/test-helpers";
 
 const execFileAsync = promisify(execFile);
 const db = getDb();
@@ -109,5 +122,25 @@ describe("set-admin", () => {
       .from(sessionTable)
       .where(eq(sessionTable.userId, u.id));
     expect(after).toHaveLength(0);
+  });
+
+  it("after promotion the old password no longer signs in (real sign-in)", { timeout: SLOW_CLI }, async () => {
+    const email = `${tag}-pw@test.local`;
+    createdUserEmails.push(email);
+    await signUpUser({ email });
+    await verifyUserEmail(email);
+
+    const r = await runSetAdmin(email);
+    expect(r.code).toBe(0);
+
+    // A pre-registered account must not keep working with the attacker's
+    // password after promotion: the credential is invalidated by the script.
+    await db.delete(rateLimitTable);
+    await expect(
+      getAuth().api.signInEmail({
+        body: { email, password: DEFAULT_PASSWORD },
+        headers: new Headers(),
+      })
+    ).rejects.toThrow();
   });
 });

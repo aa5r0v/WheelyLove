@@ -3,7 +3,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { headers } from "next/headers";
 import { getDb } from "@/db";
 import { account, rateLimit, session, user, verification } from "@/db/schema";
-import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
+import {
+  sendExistingAccountEmail,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "./email";
 
 // Self-hosted auth (email + password) in our own Postgres. No third-party
 // identity provider: only Resend is called, for the auth emails.
@@ -32,6 +36,14 @@ function createAuth() {
       // The reset email always looks the same, whether or not the address exists.
       sendResetPassword: async ({ user, url }) => {
         await sendPasswordResetEmail({ to: user.email, url });
+      },
+      // A sign-up attempt on an already-registered address must reach the
+      // OWNER of that address (someone may be trying to occupy it) with a
+      // forgot-password link. Dispatched exactly like the verification letter
+      // below, through the same runInBackgroundOrAwait in better-auth's
+      // sign-up route.
+      onExistingUserSignUp: async ({ user }) => {
+        await sendExistingAccountEmail({ to: user.email });
       },
     },
     emailVerification: {

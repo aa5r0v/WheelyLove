@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   email: vi.fn(async () => {}),
   verification: vi.fn(async () => {}),
   reset: vi.fn(async () => {}),
+  existing: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -14,6 +15,7 @@ vi.mock("@/lib/email", () => ({
   sendWaitlistSpotOpenEmail: mocks.email,
   sendVerificationEmail: mocks.verification,
   sendPasswordResetEmail: mocks.reset,
+  sendExistingAccountEmail: mocks.existing,
 }));
 
 import { getDb } from "@/db";

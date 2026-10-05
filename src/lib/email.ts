@@ -250,6 +250,28 @@ export async function sendBookingCancelledEmail(info: BookingCancelledInfo) {
 
 // ---------------------------------------------------------------- auth emails
 
+// Sent when someone tries to sign up with an address that already belongs to
+// an account (onExistingUserSignUp in src/lib/auth.ts): the owner must hear
+// about it and gets the way back in.
+export async function sendExistingAccountEmail(info: { to: string }) {
+  await sendEmail({
+    to: info.to,
+    kind: "auth",
+    type: "existing-account",
+    subject: "Вече имаш профил в WheelyLove",
+    html: layout({
+      heading: "Вече имаш профил в WheelyLove",
+      body: `
+        <p style="margin: 0 0 12px;">Някой се опита да се регистрира с този имейл адрес,
+          а профил с него вече съществува.</p>
+        <p style="margin: 0 0 12px;">Ако не си бил ти, игнорирай писмото — нищо не се е променило.</p>
+        <p style="margin: 0 0 12px;">Ако си забравил паролата, задай нова от бутона по-долу.</p>
+      `,
+      button: { label: "Задай нова парола", url: `${SITE_URL}/forgot-password` },
+    }),
+  });
+}
+
 // url contains a one-time token; it expires after 24 hours.
 export async function sendVerificationEmail(info: { to: string; url: string }) {
   await sendEmail({

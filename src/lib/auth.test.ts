@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   email: vi.fn(async () => {}),
   verification: vi.fn(async () => {}),
   reset: vi.fn(async () => {}),
+  existing: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/lib/email", () => ({
   sendWaitlistSpotOpenEmail: mocks.email,
   sendVerificationEmail: mocks.verification,
   sendPasswordResetEmail: mocks.reset,
+  sendExistingAccountEmail: mocks.existing,
 }));
 
 // The admin actions resolve the session through next/headers.
@@ -223,6 +225,25 @@ describe("sign-up does not reveal existing emails", () => {
       if (["id", "createdAt", "updatedAt", "email", "name"].includes(key)) continue;
       expect(bodyTaken.user[key]).toEqual(bodyFresh.user[key]);
     }
+  });
+
+  it("notifies the owner when someone signs up with their taken address; a fresh address is not notified", async () => {
+    const taken = `${tag}-taken2@test.local`;
+    const fresh = `${tag}-fresh2@test.local`;
+    createdUserEmails.push(taken, fresh);
+    await signUpUser({ email: taken });
+    mocks.existing.mockClear();
+
+    await db.delete(rateLimit); // keep the sign-up rate limiter out of the way
+    const res = await authPost(signUpReq(taken));
+    expect(res.status).toBe(200);
+    expect(mocks.existing).toHaveBeenCalledTimes(1);
+    expect((mocks.existing.mock.calls[0] as unknown as [{ to: string }])[0].to).toBe(taken);
+
+    await db.delete(rateLimit);
+    await authPost(signUpReq(fresh));
+    // No second letter: the fresh address got the normal verification email only.
+    expect(mocks.existing).toHaveBeenCalledTimes(1);
   });
 });
 
