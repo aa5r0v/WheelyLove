@@ -2,6 +2,7 @@ import { getDb } from "@/db";
 import { sports } from "@/db/schema";
 import { createSport } from "../actions";
 import SportRow from "./sport-row";
+import { LEVEL_LABELS, SPORT_LEVELS } from "@/lib/trainings";
 
 export default async function AdminSportsPage() {
   const db = getDb();
@@ -43,6 +44,44 @@ export default async function AdminSportsPage() {
           name="description"
           placeholder="Описание"
           className="rounded-md border border-neutral-300 px-2 py-1.5 sm:col-span-2"
+        />
+        <select
+          name="level"
+          defaultValue={"all"}
+          aria-label="Ниво"
+          className="rounded-md border border-neutral-300 px-2 py-1.5"
+        >
+          {SPORT_LEVELS.map((l) => (
+            <option key={l} value={l}>
+              {LEVEL_LABELS[l]}
+            </option>
+          ))}
+        </select>
+        <input
+          name="defaultDurationMin"
+          type="number"
+          min={1}
+          placeholder="Минути"
+          aria-label="Продължителност (мин)"
+          className="rounded-md border border-neutral-300 px-2 py-1.5"
+        />
+        <input
+          name="defaultPrice"
+          type="number"
+          min={0}
+          step="0.01"
+          placeholder="Цена (€)"
+          aria-label="Цена по подразбиране (€)"
+          className="rounded-md border border-neutral-300 px-2 py-1.5"
+        />
+        <input
+          name="defaultCapacity"
+          type="number"
+          min={1}
+          defaultValue={12}
+          placeholder="Капацитет"
+          aria-label="Капацитет по подразбиране"
+          className="rounded-md border border-neutral-300 px-2 py-1.5"
         />
         <button
           type="submit"

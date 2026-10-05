@@ -7,13 +7,14 @@
 --       миграции"). Until then the columns stay in place so the first release
 --       can still be rolled back to an app version that reads them.
 -- How, when the time comes:
---   1. git mv deploy/deferred-migrations/0004_drop_stripe_columns.sql drizzle/
+--   1. git mv deploy/deferred-migrations/deferred-drop_stripe_columns.sql drizzle/<NNNN>_drop_stripe_columns.sql
+--      (<NNNN> = the next free number in drizzle/, see the journal)
 --   2. add to drizzle/meta/_journal.json (entries array):
 --        {
---          "idx": 4,
+--          "idx": <next idx>,
 --          "version": "7",
 --          "when": <Unix time in ms at that moment>,
---          "tag": "0004_drop_stripe_columns",
+--          "tag": "<NNNN>_drop_stripe_columns",
 --          "breakpoints": true
 --        }
 --   3. commit and deploy normally (deploy.sh applies it with the rest).

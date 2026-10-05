@@ -22,12 +22,18 @@ export const paymentMethodEnum = pgEnum("payment_method", ["card", "cash"]);
 
 export const galleryTypeEnum = pgEnum("gallery_type", ["image", "video"]);
 
+export const sportLevelEnum = pgEnum("sport_level", ["all", "beginner", "intermediate", "advanced"]);
+
 export const sports = pgTable("sports", {
   id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 64 }).notNull().unique(),
   name: varchar("name", { length: 128 }).notNull(),
   color: varchar("color", { length: 32 }).notNull().default("#6366f1"),
   description: text("description").default(""),
+  level: sportLevelEnum("level").notNull().default("all"),
+  defaultDurationMin: integer("default_duration_min"),
+  defaultPriceCents: integer("default_price_cents"),
+  defaultCapacity: integer("default_capacity").notNull().default(12),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

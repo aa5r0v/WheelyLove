@@ -29,6 +29,13 @@
       "when": 1791184258333,
       "tag": "0003_better_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791196741100,
+      "tag": "0004_trainings_sport_fields",
+      "breakpoints": true
     }
   ]
 }

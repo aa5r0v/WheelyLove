@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateSport } from "../actions";
+import { LEVEL_LABELS, SPORT_LEVELS, type SportLevel } from "@/lib/trainings";
 
 type Sport = {
   id: number;
@@ -9,6 +10,10 @@ type Sport = {
   name: string;
   color: string;
   description: string | null;
+  level: SportLevel;
+  defaultDurationMin: number | null;
+  defaultPriceCents: number | null;
+  defaultCapacity: number;
 };
 
 export default function SportRow({ sport }: { sport: Sport }) {
@@ -28,6 +33,7 @@ export default function SportRow({ sport }: { sport: Sport }) {
         />
         <p className="font-medium">{sport.name}</p>
         <p className="text-sm text-neutral-500">/{sport.slug}</p>
+        <p className="text-xs text-neutral-400">{LEVEL_LABELS[sport.level]}</p>
         <button
           onClick={() => setEditing(true)}
           className="ml-auto text-sm text-neutral-700 hover:underline"
@@ -59,6 +65,46 @@ export default function SportRow({ sport }: { sport: Sport }) {
         name="description"
         defaultValue={sport.description ?? ""}
         className="rounded-md border border-neutral-300 px-2 py-1.5 sm:col-span-2"
+      />
+      <select
+        name="level"
+        defaultValue={sport.level}
+        aria-label="Ниво"
+        className="rounded-md border border-neutral-300 px-2 py-1.5"
+      >
+        {SPORT_LEVELS.map((l) => (
+          <option key={l} value={l}>
+            {LEVEL_LABELS[l]}
+          </option>
+        ))}
+      </select>
+      <input
+        name="defaultDurationMin"
+        type="number"
+        min={1}
+        defaultValue={sport.defaultDurationMin ?? ""}
+        placeholder="Минути"
+        aria-label="Продължителност (мин)"
+        className="rounded-md border border-neutral-300 px-2 py-1.5"
+      />
+      <input
+        name="defaultPrice"
+        type="number"
+        min={0}
+        step="0.01"
+        defaultValue={sport.defaultPriceCents === null ? "" : (sport.defaultPriceCents / 100).toFixed(2)}
+        placeholder="Цена (€)"
+        aria-label="Цена по подразбиране (€)"
+        className="rounded-md border border-neutral-300 px-2 py-1.5"
+      />
+      <input
+        name="defaultCapacity"
+        type="number"
+        min={1}
+        defaultValue={sport.defaultCapacity}
+        placeholder="Капацитет"
+        aria-label="Капацитет по подразбиране"
+        className="rounded-md border border-neutral-300 px-2 py-1.5"
       />
       <div className="flex gap-3">
         <button

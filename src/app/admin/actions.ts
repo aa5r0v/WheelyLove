@@ -15,6 +15,7 @@ import { uploadToStorage, deleteFromStorage } from "@/lib/storage";
 import { cancelBookingAndNotify } from "@/lib/bookings";
 import { notifyWaitlist } from "@/lib/waitlist";
 import { fromSofiaDateTime } from "@/lib/format";
+import { parseLevel, parseOptionalEuroToCents, parseOptionalInt } from "@/lib/trainings";
 
 async function assertAdmin() {
   if (!(await isAdmin())) {
@@ -154,6 +155,10 @@ export async function createSport(formData: FormData) {
     name: String(formData.get("name")),
     color: String(formData.get("color") || "#6366f1"),
     description: String(formData.get("description") ?? ""),
+    level: parseLevel(formData.get("level")),
+    defaultDurationMin: parseOptionalInt(formData.get("defaultDurationMin")),
+    defaultPriceCents: parseOptionalEuroToCents(formData.get("defaultPrice")),
+    defaultCapacity: parseOptionalInt(formData.get("defaultCapacity")) ?? 12,
   });
   revalidatePath("/admin/sports");
   revalidatePath("/");
@@ -168,6 +173,10 @@ export async function updateSport(sportId: number, formData: FormData) {
       name: String(formData.get("name")),
       color: String(formData.get("color") || "#6366f1"),
       description: String(formData.get("description") ?? ""),
+      level: parseLevel(formData.get("level")),
+      defaultDurationMin: parseOptionalInt(formData.get("defaultDurationMin")),
+      defaultPriceCents: parseOptionalEuroToCents(formData.get("defaultPrice")),
+      defaultCapacity: parseOptionalInt(formData.get("defaultCapacity")) ?? 12,
     })
     .where(eq(sports.id, sportId));
   revalidatePath("/admin/sports");
