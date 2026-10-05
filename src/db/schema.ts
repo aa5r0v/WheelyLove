@@ -94,8 +94,12 @@ export const classSessions = pgTable(
     templateId: integer("template_id").references(() => sessionTemplates.id, {
       onDelete: "set null",
     }),
+    // The slot the weekly template planned (never changes, even if the class is
+    // moved by hand later). Uniqueness is on (template_id, template_slot), so
+    // a moved class is not re-created at its old time by the next "generate".
+    templateSlot: timestamp("template_slot"),
   },
-  (t) => [uniqueIndex("class_sessions_template_start_idx").on(t.templateId, t.startTime)]
+  (t) => [uniqueIndex("class_sessions_template_slot_idx").on(t.templateId, t.templateSlot)]
 );
 
 export const bookings = pgTable(

@@ -19,7 +19,15 @@ describe("trainings migrations are additive", () => {
 
   it.each(files)("%s has no destructive statement and every NOT NULL column has a DEFAULT", (f) => {
     const text = readFileSync(path.join(drizzleDir, f), "utf8");
-    expect(text).not.toMatch(/\bDROP\s+(TABLE|COLUMN|TYPE|INDEX|CONSTRAINT)\b/i);
+    expect(text).not.toMatch(/\bDROP\s+(TABLE|COLUMN|TYPE|CONSTRAINT)\b/i);
+    // An index holds no data: dropping one is allowed only AFTER the same file
+    // has created its replacement unique index (0006 swaps the generator key).
+    const drop = text.search(/\bDROP\s+INDEX\b/i);
+    if (drop >= 0) {
+      const create = text.search(/\bCREATE\s+UNIQUE\s+INDEX\b/i);
+      expect(create, "DROP INDEX without a replacement created before it").toBeGreaterThanOrEqual(0);
+      expect(create).toBeLessThan(drop);
+    }
     expect(text).not.toMatch(/\bTRUNCATE\b|\bDELETE\s+FROM\b|\bRENAME\b|\bALTER\s+COLUMN\b/i);
     for (const stmt of text.split("--> statement-breakpoint")) {
       if (/ADD COLUMN/i.test(stmt) && /NOT NULL/i.test(stmt)) {

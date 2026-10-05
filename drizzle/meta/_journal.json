@@ -43,6 +43,13 @@
       "when": 1791196844627,
       "tag": "0005_session_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791197712384,
+      "tag": "0006_template_slot",
+      "breakpoints": true
     }
   ]
 }

@@ -38,6 +38,7 @@ export function planSessions(t: TemplateRow, now: Date, weeks: number) {
     sportId: number;
     instructorId: number;
     startTime: Date;
+    templateSlot: Date;
     endTime: Date;
     capacity: number;
     priceCents: number;
@@ -52,6 +53,7 @@ export function planSessions(t: TemplateRow, now: Date, weeks: number) {
       sportId: t.sportId,
       instructorId: t.instructorId,
       startTime,
+      templateSlot: startTime,
       endTime: new Date(startTime.getTime() + t.durationMin * 60_000),
       capacity: t.capacity,
       priceCents: t.priceCents,
@@ -60,7 +62,7 @@ export function planSessions(t: TemplateRow, now: Date, weeks: number) {
   return plan;
 }
 
-// Idempotent, insert-only: UNIQUE (template_id, start_time) + ON CONFLICT DO
+// Idempotent, insert-only: UNIQUE (template_id, template_slot) + ON CONFLICT DO
 // NOTHING. Existing sessions (booked, edited or cancelled) are never updated or
 // deleted, and a cancelled session is not re-created.
 export async function generateSessions(opts?: {
@@ -87,7 +89,7 @@ export async function generateSessions(opts?: {
   const inserted = await db
     .insert(classSessions)
     .values(rows)
-    .onConflictDoNothing({ target: [classSessions.templateId, classSessions.startTime] })
+    .onConflictDoNothing({ target: [classSessions.templateId, classSessions.templateSlot] })
     .returning({ id: classSessions.id });
   return { created: inserted.length, planned: rows.length };
 }

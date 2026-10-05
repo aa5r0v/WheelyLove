@@ -161,6 +161,21 @@ describe("generateSessions (database)", () => {
     expect(bk).toHaveLength(1);
   });
 
+  it("a class moved by hand is not re-created at its old time by the next generate", async () => {
+    const t = await makeTemplate({ weekday: 2, startTime: "18:00" });
+    await generateSessions({ now: NOW, weeks: 1, templateIds: [t.id] });
+    const [s] = await db.select().from(classSessions).where(eq(classSessions.templateId, t.id));
+    // The admin moves it one hour later (what updateSession does).
+    const moved = new Date(s.startTime.getTime() + 60 * 60_000);
+    await db.update(classSessions).set({ startTime: moved }).where(eq(classSessions.id, s.id));
+
+    const again = await generateSessions({ now: NOW, weeks: 1, templateIds: [t.id] });
+    expect(again.created).toBe(0);
+    const rows = await db.select().from(classSessions).where(eq(classSessions.templateId, t.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].startTime.toISOString()).toBe(moved.toISOString());
+  });
+
   it("ignores inactive templates", async () => {
     const t = await makeTemplate({ weekday: 5, active: false });
     const r = await generateSessions({ now: NOW, weeks: 2, templateIds: [t.id] });
