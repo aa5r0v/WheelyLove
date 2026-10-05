@@ -23,6 +23,35 @@
 1. празна база -> `migrate` създава схемата (от `./drizzle`);
 2. после само ДАННИ от Neon (`--data-only`) за четирите таблици.
 
+## 0. Експорт на бъдещите резервации от Neon (ПРЕДИ импорта)
+
+Резервациите НЕ се пренасят (вж. горе), но студиото трябва да знае кои клиенти са
+записани за бъдещи часове, за да им пише/звъни ръчно. Направете това ПРЕВИМЕРНО
+преди всяко възстановяване на данни (и задължително преди окончателното) - след
+прехвърляното Neon остава достъпен, но процедурата се води приключена:
+
+```bash
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+docker run --rm -e NEON_URL postgres:17-alpine sh -c \
+  'psql "$NEON_URL" -c "COPY (
+      SELECT cs.start_time AS час, sp.name AS спорт, b.user_email AS имейл,
+             b.user_phone AS телефон, b.status AS статус
+      FROM bookings b
+      JOIN class_sessions cs ON cs.id = b.session_id
+      JOIN sports sp ON sp.id = cs.sport_id
+      WHERE b.status IN ('"'"'pending'"'"', '"'"'confirmed'"'"')
+        AND cs.start_time > now()
+      ORDER BY cs.start_time
+   ) TO STDOUT WITH (FORMAT csv, HEADER true)"' \
+  > /srv/wheelylove/backups/neon-future-bookings-$TS.csv
+wc -l /srv/wheelylove/backups/neon-future-bookings-$TS.csv   # 1 ред заглавие + по ред на резервация
+chmod 600 /srv/wheelylove/backups/neon-future-bookings-$TS.csv
+```
+
+Имената на клиентите не са в базата (живееха в Clerk) - разпознаването става по
+имейл/телефон. Файлът съдържа лични данни: съхранявайте го като backup-овете и
+изтрийте го, когато студиото вече не го ползва.
+
 ## 1. Репетиция (сайтът още не е обявен - нищо не се чупи)
 
 Вземете от Neon НЕПУЛИРАНАТА ("direct", без `-pooler` в хоста) връзка. Запазете я само в променлива на
@@ -52,6 +81,18 @@ docker exec -i wheelylove-db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES
 echo "exit code: $?"                                   # очаквано: 0
 ```
 
+**Нулиране на заетите места (задължително след всеки restore):** `class_sessions`
+идва от Neon с `booked_count` от старите резервации, но самите `bookings` НЕ се
+импортират - без нулиране местата остават „заети" завинаги и никой не може да
+резервира. Импортираните резервации не съществуват, така че правилната стойност е 0:
+
+```bash
+docker exec wheelylove-db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "UPDATE class_sessions SET booked_count = 0" \
+  -c "SELECT count(*) AS sessions_with_phantom_spots FROM class_sessions WHERE booked_count > 0"'
+# очаквано: UPDATE <n>, после sessions_with_phantom_spots = 0
+```
+
 ## 2. Проверка
 
 Броят редове по четирите таблици трябва да съвпада със Neon:
@@ -64,10 +105,15 @@ echo "--- Нова"; docker exec wheelylove-db sh -c 'psql -U "$POSTGRES_USER" -
 Тествайте и че последователностите (sequences) са продължили от правилната стойност: направете пробен час
 в админа и вижте, че няма грешка "duplicate key". Ако все пак има: `SELECT setval(pg_get_serial_sequence('sports','id'), (SELECT max(id) FROM sports));` (аналогично за останалите таблици).
 
+Проверете и че не сте пропуснали нулирането на заетите места (вж. стъпка 1):
+`docker exec wheelylove-db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "SELECT count(*) FROM class_sessions WHERE booked_count > 0"'`
+(очаквано: 0).
+
 ## 3. Окончателно прехвърляне
 
 1. Кажете на студиото да не правят промени ~10 минути (или поставете Neon в режим само за четене).
-2. Повторете стъпка 1 (нов дъмп -> изпразване -> възстановяване) и стъпка 2 (проверка). Ако в новата база
+2. Повторете стъпка 0 (пресен CSV с бъдещите резервации - старият е остарял), стъпка 1 (нов дъмп ->
+   изпразване -> възстановяване -> НУЛИРАНЕ на booked_count) и стъпка 2 (проверка). Ако в новата база
    вече има данни от репетиция, най-чисто е да я създадете наново (рецептата е в секция "Връщане" долу).
 3. Пуснете миграцията на снимките: `deploy/migrate-r2-to-local.md` (сваля R2 обектите на диска).
 4. Пробна резервация + имейл. Следете: `docker logs -f wheelylove-app`.
