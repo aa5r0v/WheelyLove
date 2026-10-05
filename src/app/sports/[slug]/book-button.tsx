@@ -6,10 +6,12 @@ export default function BookButton({
   sessionId,
   disabled,
   signedIn,
+  label,
 }: {
   sessionId: number;
   disabled: boolean;
   signedIn: boolean;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
@@ -57,7 +59,7 @@ export default function BookButton({
         disabled={disabled}
         className="press font-display bg-ink px-5 py-2 text-sm tracking-wide text-paper disabled:cursor-not-allowed disabled:bg-ink/20"
       >
-        {disabled ? "Пълно" : "Резервирай"}
+        {disabled ? "Пълно" : (label ?? "Резервирай")}
       </button>
     );
   }

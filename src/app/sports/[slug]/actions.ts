@@ -69,6 +69,7 @@ export async function joinWaitlist(sessionId: number) {
     .onConflictDoNothing();
 
   revalidatePath(`/sports/${classSession.sportSlug}`);
+  revalidatePath("/schedule");
 }
 
 export async function leaveWaitlist(sessionId: number) {
@@ -88,4 +89,5 @@ export async function leaveWaitlist(sessionId: number) {
     .innerJoin(sports, eq(classSessions.sportId, sports.id))
     .where(eq(classSessions.id, sessionId));
   if (classSession) revalidatePath(`/sports/${classSession.sportSlug}`);
+  revalidatePath("/schedule");
 }
