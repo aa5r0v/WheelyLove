@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { instructors } from "@/db/schema";
@@ -21,10 +21,12 @@ export async function generateMetadata({
   const { locale: raw, slug } = await params;
   const locale = resolveLocale(raw);
   const db = getDb();
+  // An archived instructor's profile is not publicly reachable (404); their
+  // already scheduled classes still show the name via the schedule joins.
   const [instructor] = await db
     .select({ name: instructors.name })
     .from(instructors)
-    .where(eq(instructors.slug, slug));
+    .where(and(eq(instructors.slug, slug), isNull(instructors.archivedAt)));
   if (!instructor) return {};
   const t = await getTranslations({ locale, namespace: "instructors" });
   return {
@@ -52,7 +54,7 @@ export default async function InstructorPage({
   const [instructor] = await db
     .select()
     .from(instructors)
-    .where(eq(instructors.slug, slug));
+    .where(and(eq(instructors.slug, slug), isNull(instructors.archivedAt)));
 
   if (!instructor) notFound();
 

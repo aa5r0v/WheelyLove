@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { asc } from "drizzle-orm";
+import { asc, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { instructors } from "@/db/schema";
 import { getTranslations } from "next-intl/server";
@@ -34,7 +34,12 @@ export async function generateMetadata({
 
 export default async function InstructorsPage() {
   const t = await getTranslations("instructors");
-  const list = await getDb().select().from(instructors).orderBy(asc(instructors.name));
+  // Archived instructors keep their pages' data but are not listed publicly.
+  const list = await getDb()
+    .select()
+    .from(instructors)
+    .where(isNull(instructors.archivedAt))
+    .orderBy(asc(instructors.name));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">

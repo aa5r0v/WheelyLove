@@ -9,7 +9,8 @@ export type InstructorRow = typeof instructors.$inferSelect;
 // The instructor row of the signed-in user. Every read and write in /instructor
 // starts here. null unless the role is exactly "instructor", the email is
 // verified AND an instructors row points at this user. An admin is NOT an
-// instructor automatically (he has /admin).
+// instructor automatically (he has /admin). An archived instructor never gets
+// panel access either, even if a row still points at the account.
 export async function getInstructorForSession(reqHeaders?: Headers): Promise<InstructorRow | null> {
   const session = await getSession(reqHeaders);
   if (!session) return null;
@@ -17,7 +18,7 @@ export async function getInstructorForSession(reqHeaders?: Headers): Promise<Ins
   const [row] = await getDb()
     .select()
     .from(instructors)
-    .where(eq(instructors.userId, session.user.id));
+    .where(and(eq(instructors.userId, session.user.id), isNull(instructors.archivedAt)));
   return row ?? null;
 }
 

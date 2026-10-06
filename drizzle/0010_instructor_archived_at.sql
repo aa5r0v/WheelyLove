@@ -1,0 +1,1 @@
+ALTER TABLE "instructors" ADD COLUMN "archived_at" timestamp;

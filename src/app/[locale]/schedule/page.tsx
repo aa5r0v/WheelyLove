@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { asc } from "drizzle-orm";
+import { asc, isNull } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/db";
 import { instructors, sports } from "@/db/schema";
@@ -84,7 +84,11 @@ export default async function SchedulePage({
   const db = getDb();
   const [allSports, allInstructors] = await Promise.all([
     db.select({ slug: sports.slug, name: sports.name }).from(sports).orderBy(asc(sports.name)),
-    db.select({ slug: instructors.slug, name: instructors.name }).from(instructors).orderBy(asc(instructors.name)),
+    db
+      .select({ slug: instructors.slug, name: instructors.name })
+      .from(instructors)
+      .where(isNull(instructors.archivedAt))
+      .orderBy(asc(instructors.name)),
   ]);
 
   // Unknown filter values are ignored rather than producing an empty page.

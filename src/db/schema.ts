@@ -55,6 +55,9 @@ export const instructors = pgTable("instructors", {
   userId: text("user_id")
     .unique()
     .references(() => user.id, { onDelete: "set null" }),
+  // Soft removal: sessions/templates/bookings stay; the profile is hidden and no
+  // new classes can be created for the instructor (see instructor-lifecycle.ts).
+  archivedAt: timestamp("archived_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

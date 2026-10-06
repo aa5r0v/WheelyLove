@@ -61,3 +61,15 @@ describe("sports training columns exist in the test database", () => {
     expect(by.default_price_cents.is_nullable).toBe("YES");
   });
 });
+
+describe("instructor archived_at (0010)", () => {
+  it("exists, is nullable and has no default (archived = active until set)", async () => {
+    const rows = await getDb().execute(sql`
+      select is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public' and table_name = 'instructors' and column_name = 'archived_at'`);
+    const [col] = rows as unknown as { is_nullable: string; column_default: string | null }[];
+    expect(col?.is_nullable).toBe("YES");
+    expect(col?.column_default).toBeNull();
+  });
+});

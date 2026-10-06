@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { instructors, sessionTemplates, sports } from "@/db/schema";
 import { createTemplate } from "../actions";
@@ -11,9 +11,12 @@ export default async function AdminSchedulePage() {
   await requireAdminPage();
   const db = getDb();
   const allSports = await db.select({ id: sports.id, name: sports.name }).from(sports).orderBy(asc(sports.name));
-  const allInstructors = await db
+  // New templates: only active instructors. An existing template keeps its own
+  // (possibly archived) instructor selectable so it can stay as it is.
+  const activeInstructors = await db
     .select({ id: instructors.id, name: instructors.name })
     .from(instructors)
+    .where(isNull(instructors.archivedAt))
     .orderBy(asc(instructors.name));
   const templates = await db
     .select({
@@ -49,20 +52,26 @@ export default async function AdminSchedulePage() {
       </div>
 
       <div className="mt-6 space-y-2">
-        {templates.map((t) => (
-          <TemplateRow key={t.id} t={t} sports={allSports} instructors={allInstructors} />
-        ))}
+        {templates.map((t) => {
+          const rowInstructors = activeInstructors.some((i) => i.id === t.instructorId)
+            ? activeInstructors
+            : [
+                ...activeInstructors,
+                { id: t.instructorId, name: `${t.instructorName} (архивиран)` },
+              ];
+          return <TemplateRow key={t.id} t={t} sports={allSports} instructors={rowInstructors} />;
+        })}
         {templates.length === 0 && <p className="text-sm text-neutral-500">Още няма шаблони.</p>}
       </div>
 
-      {allInstructors.length === 0 || allSports.length === 0 ? (
+      {activeInstructors.length === 0 || allSports.length === 0 ? (
         <p className="mt-6 text-sm text-amber-600">Първо добави поне една тренировка и един инструктор.</p>
       ) : (
         <form
           action={createTemplate}
           className="mt-6 grid gap-3 rounded-lg border border-neutral-200 bg-white p-5 sm:grid-cols-4"
         >
-          <TemplateFields sports={allSports} instructors={allInstructors} />
+          <TemplateFields sports={allSports} instructors={activeInstructors} />
           <p className="text-xs text-neutral-500 sm:col-span-4">
             Празни продължителност, капацитет или цена се взимат от настройките на тренировката.
           </p>

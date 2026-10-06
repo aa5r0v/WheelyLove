@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb, type DbOrTx } from "../db";
 import { account, instructors, session, user } from "../db/schema";
 
 // Linking an instructor to a login account. Relative imports on purpose: the
@@ -14,6 +14,7 @@ export type LinkResult =
         | "email_not_verified"
         | "is_admin"
         | "instructor_not_found"
+        | "instructor_archived"
         | "instructor_has_account"
         | "user_linked_elsewhere";
       message: string;
@@ -24,6 +25,7 @@ const MESSAGES = {
   email_not_verified: "Имейлът на този акаунт още не е потвърден.",
   is_admin: "Администраторски акаунт не може да бъде свързан като инструктор.",
   instructor_not_found: "Инструкторът не съществува.",
+  instructor_archived: "Този инструктор е архивиран и не може да бъде свързан с акаунт.",
   instructor_has_account: "Този инструктор вече е свързан с акаунт. Първо махни достъпа.",
   user_linked_elsewhere: "Този акаунт вече е свързан с друг инструктор.",
 } as const;
@@ -35,6 +37,9 @@ function fail(error: keyof typeof MESSAGES): LinkResult {
 // Sets user.role = "instructor" and instructors.user_id in ONE transaction.
 // The role update is conditional (role is user/instructor), so an account that
 // is promoted to admin concurrently can never end up as an instructor.
+// The instructors row is locked FOR UPDATE before it is read, so linking races
+// with archiving (instructor-lifecycle.ts) on the same row lock instead of
+// interleaving.
 export async function linkInstructorAccount(opts: {
   email: string;
   instructor: { id: number } | { slug: string };
@@ -52,10 +57,12 @@ export async function linkInstructorAccount(opts: {
     if (!u.emailVerified) return fail("email_not_verified");
 
     const [ins] = await tx
-      .select({ id: instructors.id, userId: instructors.userId })
+      .select({ id: instructors.id, userId: instructors.userId, archivedAt: instructors.archivedAt })
       .from(instructors)
-      .where("id" in target ? eq(instructors.id, target.id) : eq(instructors.slug, target.slug));
+      .where("id" in target ? eq(instructors.id, target.id) : eq(instructors.slug, target.slug))
+      .for("update");
     if (!ins) return fail("instructor_not_found");
+    if (ins.archivedAt) return fail("instructor_archived");
     if (ins.userId && ins.userId !== u.id) return fail("instructor_has_account");
 
     const [other] = await tx
@@ -89,22 +96,30 @@ export async function linkInstructorAccount(opts: {
   });
 }
 
+// Removes the access inside a caller-owned transaction: the link is cut, the
+// account's sessions are revoked and an "instructor" role goes back to "user"
+// (an admin role is never touched; the conditional update skips it). The
+// instructors row is locked, so this cannot interleave with linking or
+// archiving on the same instructor.
+export async function unlinkInstructorWithinTx(tx: DbOrTx, instructorId: number): Promise<boolean> {
+  const [ins] = await tx
+    .select({ userId: instructors.userId })
+    .from(instructors)
+    .where(eq(instructors.id, instructorId))
+    .for("update");
+  if (!ins?.userId) return false;
+  await tx.update(instructors).set({ userId: null }).where(eq(instructors.id, instructorId));
+  await tx.delete(session).where(eq(session.userId, ins.userId));
+  await tx
+    .update(user)
+    .set({ role: "user" })
+    .where(and(eq(user.id, ins.userId), eq(user.role, "instructor")));
+  return true;
+}
+
 // Removes the access: the link is cut and an "instructor" role goes back to
 // "user" (an admin role is never touched).
 export async function unlinkInstructorAccount(instructorId: number): Promise<{ ok: boolean }> {
-  const db = getDb();
-  return db.transaction(async (tx) => {
-    const [ins] = await tx
-      .select({ userId: instructors.userId })
-      .from(instructors)
-      .where(eq(instructors.id, instructorId));
-    if (!ins?.userId) return { ok: false };
-    await tx.update(instructors).set({ userId: null }).where(eq(instructors.id, instructorId));
-    await tx.delete(session).where(eq(session.userId, ins.userId));
-    await tx
-      .update(user)
-      .set({ role: "user" })
-      .where(and(eq(user.id, ins.userId), eq(user.role, "instructor")));
-    return { ok: true };
-  });
+  const ok = await getDb().transaction((tx) => unlinkInstructorWithinTx(tx, instructorId));
+  return { ok };
 }

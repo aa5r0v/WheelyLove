@@ -36,7 +36,8 @@ export default async function HomePage() {
   const db = getDb();
   const [allSports, allInstructors, upcomingRows] = await Promise.all([
     db.select().from(sports),
-    db.select().from(instructors),
+    // Archived instructors are hidden everywhere, the home page cards included.
+    db.select().from(instructors).where(isNull(instructors.archivedAt)),
     db
       .select({ sportId: classSessions.sportId })
       .from(classSessions)

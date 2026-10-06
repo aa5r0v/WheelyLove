@@ -356,10 +356,10 @@ describe("admin: link / unlink an account", () => {
     const target = await makeUser("lk1-user", "user");
     const plain = await makeUser("lk1-plain", "user");
     as(plain.cookie);
-    await expect(linkInstructorAccess(t.id, {}, form(target.email))).rejects.toThrow("администратор");
+    await expect(linkInstructorAccess(t.id, form(target.email))).rejects.toThrow("администратор");
     await expect(removeInstructorAccess(t.id)).rejects.toThrow("администратор");
     as(ua.cookie); // an instructor is not an admin either
-    await expect(linkInstructorAccess(t.id, {}, form(target.email))).rejects.toThrow("администратор");
+    await expect(linkInstructorAccess(t.id, form(target.email))).rejects.toThrow("администратор");
     expect(await linkOf(t.id)).toBeNull();
     expect(await roleOf(target.id)).toBe("user");
   });
@@ -368,7 +368,7 @@ describe("admin: link / unlink an account", () => {
     const t = await makeInstructor("lk2", null);
     const target = await makeUser("lk2-user", "user");
     as(await adminCookie("lk2-admin"));
-    const r = await linkInstructorAccess(t.id, {}, form(target.email.toUpperCase()));
+    const r = await linkInstructorAccess(t.id, form(target.email.toUpperCase()));
     expect(r.error).toBeUndefined();
     expect(await roleOf(target.id)).toBe("instructor");
     expect(await linkOf(t.id)).toBe(target.id);
@@ -395,7 +395,7 @@ describe("admin: link / unlink an account", () => {
     const t = await makeInstructor("lk3", null);
     const victim = await makeUser("lk3-admin", "admin");
     as(await adminCookie("lk3-caller"));
-    const r = await linkInstructorAccess(t.id, {}, form(victim.email));
+    const r = await linkInstructorAccess(t.id, form(victim.email));
     expect(r.error).toMatch(/Администраторски акаунт/);
     expect(await roleOf(victim.id)).toBe("admin");
     expect(await linkOf(t.id)).toBeNull();
@@ -405,12 +405,12 @@ describe("admin: link / unlink an account", () => {
     const t = await makeInstructor("lk4", null);
     const unver = await makeUser("lk4-unver", "user", { verified: false });
     as(await adminCookie("lk4-caller"));
-    expect((await linkInstructorAccess(t.id, {}, form(unver.email))).error).toMatch(/не е потвърден/);
-    expect((await linkInstructorAccess(t.id, {}, form(`${tag}-nobody@test.local`))).error).toMatch(/Няма регистриран/);
+    expect((await linkInstructorAccess(t.id, form(unver.email))).error).toMatch(/не е потвърден/);
+    expect((await linkInstructorAccess(t.id, form(`${tag}-nobody@test.local`))).error).toMatch(/Няма регистриран/);
     // A already has an account
-    expect((await linkInstructorAccess(A.id, {}, form(ub.email))).error).toMatch(/вече е свързан/);
+    expect((await linkInstructorAccess(A.id, form(ub.email))).error).toMatch(/вече е свързан/);
     // ub is already B: cannot also become t
-    expect((await linkInstructorAccess(t.id, {}, form(ub.email))).error).toMatch(/вече е свързан с друг/);
+    expect((await linkInstructorAccess(t.id, form(ub.email))).error).toMatch(/вече е свързан с друг/);
     expect(await linkOf(t.id)).toBeNull();
     expect(await roleOf(unver.id)).toBe("user");
   });
@@ -433,7 +433,7 @@ describe("pre-registration takeover (H1) and access removal (L3)", () => {
     const attacker = await makeUser("h1w-victim", "user"); // registered by the attacker, email verified by the owner
     expect(await sessionsOf(attacker.id)).toBeGreaterThan(0);
     as(await adminCookie("h1w-admin"));
-    const r = await linkInstructorAccess(t.id, {}, form(attacker.email));
+    const r = await linkInstructorAccess(t.id, form(attacker.email));
     expect(r.ok).toMatch(/Забравена парола/);
     expect(await sessionsOf(attacker.id)).toBe(0);
     expect(await passwordOf(attacker.id)).toBeNull();
@@ -447,14 +447,14 @@ describe("pre-registration takeover (H1) and access removal (L3)", () => {
     const t = await makeInstructor("h1same", null);
     const u = await makeUser("h1same-user", "user");
     as(await adminCookie("h1same-admin"));
-    await linkInstructorAccess(t.id, {}, form(u.email));
+    await linkInstructorAccess(t.id, form(u.email));
     await db
       .update(accountTable)
       .set({ password: await hashPassword("fresh-password-123456") })
       .where(eq(accountTable.userId, u.id));
     await signInCookie(u.email, "fresh-password-123456");
     const before = await sessionsOf(u.id);
-    const r = await linkInstructorAccess(t.id, {}, form(u.email));
+    const r = await linkInstructorAccess(t.id, form(u.email));
     expect(r.error).toBeUndefined();
     expect(await passwordOf(u.id)).not.toBeNull();
     expect(await sessionsOf(u.id)).toBe(before);
@@ -464,7 +464,7 @@ describe("pre-registration takeover (H1) and access removal (L3)", () => {
     const t = await makeInstructor("l3", null);
     const u = await makeUser("l3-user", "user");
     as(await adminCookie("l3-admin"));
-    await linkInstructorAccess(t.id, {}, form(u.email));
+    await linkInstructorAccess(t.id, form(u.email));
     await db
       .update(accountTable)
       .set({ password: await hashPassword("fresh-password-123456") })

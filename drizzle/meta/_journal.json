@@ -71,6 +71,13 @@
       "when": 1791268479152,
       "tag": "0009_booking_locale",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791288982956,
+      "tag": "0010_instructor_archived_at",
+      "breakpoints": true
     }
   ]
 }

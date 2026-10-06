@@ -1,119 +1,87 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { instructors, user } from "@/db/schema";
-import { createInstructor, deleteInstructor, removeInstructorAccess } from "../actions";
-import InstructorAccess from "./instructor-access";
+import { classSessions, instructors, sessionTemplates, user } from "@/db/schema";
 import { requireAdminPage } from "@/lib/admin-page";
+import InstructorArchivedRow from "./instructor-archived-row";
+import InstructorCreateForm from "./instructor-create";
+import InstructorRow from "./instructor-row";
 
 export default async function AdminInstructorsPage() {
   await requireAdminPage();
   const db = getDb();
-  const all = await db
-    .select({
-      id: instructors.id,
-      name: instructors.name,
-      specialties: instructors.specialties,
-      email: instructors.email,
-      phone: instructors.phone,
-      accountEmail: user.email,
-    })
-    .from(instructors)
-    .leftJoin(user, eq(user.id, instructors.userId))
-    .orderBy(asc(instructors.name));
+  const [all, sessionCounts, templateCounts] = await Promise.all([
+    db
+      .select({
+        id: instructors.id,
+        name: instructors.name,
+        slug: instructors.slug,
+        specialties: instructors.specialties,
+        email: instructors.email,
+        phone: instructors.phone,
+        bio: instructors.bio,
+        photoUrl: instructors.photoUrl,
+        accountEmail: user.email,
+        archivedAt: instructors.archivedAt,
+      })
+      .from(instructors)
+      .leftJoin(user, eq(user.id, instructors.userId))
+      .orderBy(asc(instructors.name)),
+    db
+      .select({ instructorId: classSessions.instructorId, n: sql<number>`count(*)::int` })
+      .from(classSessions)
+      .groupBy(classSessions.instructorId),
+    db
+      .select({ instructorId: sessionTemplates.instructorId, n: sql<number>`count(*)::int` })
+      .from(sessionTemplates)
+      .groupBy(sessionTemplates.instructorId),
+  ]);
+  const counts = (rows: { instructorId: number; n: number }[]) =>
+    new Map(rows.map((r) => [r.instructorId, r.n]));
+  const sMap = counts(sessionCounts);
+  const tMap = counts(templateCounts);
+  const withCounts = (i: (typeof all)[number]) => ({
+    ...i,
+    sessionCount: sMap.get(i.id) ?? 0,
+    templateCount: tMap.get(i.id) ?? 0,
+  });
+  const active = all.filter((i) => !i.archivedAt).map(withCounts);
+  const archived = all.filter((i) => i.archivedAt).map(withCounts);
 
   return (
     <div>
       <h1 className="text-2xl font-bold">Инструктори</h1>
+      <p className="mt-2 max-w-2xl text-sm text-neutral-600">
+        Изтриването е завинаги и е възможно само когато инструкторът няма нито един
+        час или шаблон. Архивирането премахва профила от сайта и спира новите
+        часове, но запазва историята: вече създадените часове и резервациите
+        остават.
+      </p>
 
       <div className="mt-6 space-y-2">
-        {all.map((i) => (
-          <div
-            key={i.id}
-            className="rounded-lg border border-neutral-200 bg-white p-3"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{i.name}</p>
-                <p className="text-sm text-neutral-500">
-                  {i.specialties} · {i.email} · {i.phone}
-                </p>
-              </div>
-              <form
-                action={async () => {
-                  "use server";
-                  await deleteInstructor(i.id);
-                }}
-              >
-                <button className="text-sm text-red-600 hover:underline">
-                  Изтрий
-                </button>
-              </form>
-            </div>
-            <div className="mt-3 border-t border-neutral-100 pt-3 text-sm">
-              {i.accountEmail ? (
-                <form
-                  action={async () => {
-                    "use server";
-                    await removeInstructorAccess(i.id);
-                  }}
-                  className="flex items-center justify-between"
-                >
-                  <span>Достъп до панела: {i.accountEmail}</span>
-                  <button className="text-red-600 hover:underline">Махни достъпа</button>
-                </form>
-              ) : (
-                <InstructorAccess instructorId={i.id} />
-              )}
-            </div>
-          </div>
+        {active.map((i) => (
+          <InstructorRow key={i.id} instructor={i} />
         ))}
+        {active.length === 0 && (
+          <p className="text-sm text-neutral-500">Още няма активни инструктори.</p>
+        )}
       </div>
 
-      <form
-        action={createInstructor}
-        className="mt-6 grid gap-3 rounded-lg border border-neutral-200 bg-white p-5 sm:grid-cols-2"
-      >
-        <input
-          name="name"
-          placeholder="Име"
-          required
-          className="rounded-md border border-neutral-300 px-2 py-1.5"
-        />
-        <input
-          name="slug"
-          placeholder="slug (напр. ani)"
-          required
-          className="rounded-md border border-neutral-300 px-2 py-1.5"
-        />
-        <input
-          name="specialties"
-          placeholder="Специалност (напр. Пилатес)"
-          className="rounded-md border border-neutral-300 px-2 py-1.5"
-        />
-        <input
-          name="phone"
-          placeholder="Телефон"
-          className="rounded-md border border-neutral-300 px-2 py-1.5"
-        />
-        <input
-          name="email"
-          type="email"
-          placeholder="Имейл"
-          className="rounded-md border border-neutral-300 px-2 py-1.5 sm:col-span-2"
-        />
-        <textarea
-          name="bio"
-          placeholder="Био"
-          rows={3}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 sm:col-span-2"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-neutral-900 px-4 py-1.5 text-white sm:col-span-2"
-        >
-          Добави инструктор
-        </button>
-      </form>
+      <InstructorCreateForm />
+
+      {archived.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-bold">Архивирани</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Възстановяването връща профила в списъка, но НЕ свързва автоматично
+            акаунт за панела и НЕ включва шаблоните — направи го ръчно, ако е нужно.
+          </p>
+          <div className="mt-3 space-y-2">
+            {archived.map((i) => (
+              <InstructorArchivedRow key={i.id} instructor={i} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

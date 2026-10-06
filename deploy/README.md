@@ -271,23 +271,36 @@ MP4 до 50 MB (проверка по magic bytes, UUID име на файла);
 (всичко друго е 404) с `Content-Security-Policy: default-src 'none'; sandbox`, без autoindex, с дълъг cache.
 
 **Компромисът с големината на заявките:** глобално nginx позволява само 2 MB тяло на заявка (достатъчно за форми
-и JSON, дребно поле за атака). Единствено `location /admin/gallery` позволява 55 MB, защото качването в галерията е
-server action към страницата `/admin/gallery` (50 MB видео + multipart overhead). Този път е допълнително ограден:
+и JSON, дребно поле за атака). Изключения са само admin пътищата за качване: `location /admin/gallery` позволява
+55 MB (качването в галерията е server action към страницата `/admin/gallery`, 50 MB видео + multipart overhead) и
+`location /admin/instructors` позволява 9 MB (снимка на инструктор до 8 MB + multipart overhead; качването и
+създаването с фото са server action-и към страницата `/admin/instructors`). Двата пътя са оградени по един и
+същия начин:
 nginx пита приложението (`auth_request` към вътрешния location `/_auth/admin` → `GET /api/internal/admin-check`)
 дали заявката носи валидна АДМИН сесия — роля admin И потвърден имейл, същата проверка като в админ действията
 (`isAdmin` в `src/lib/admin.ts`). Без нея (анонимна заявка, фалшива/изтекла бисквитка, обикновен потребител,
-непотвърден админ) nginx връща 401/403, ПРЕДИ да е прочел тялото на заявката. Пътят има и собствена тавърда
-rate-limit зона (`wl_admin_upload`, 6/мин, burst 3), броена по реалното клиентско IP за ВЯРКА заявка към пътя —
+непотвърден админ) nginx връща 401/403, ПРЕДИ да е прочел тялото на заявката. Пътищата ползват и същата тавърда
+rate-limit зона (`wl_admin_upload`, 20/мин, burst 10 — както е в `deploy/nginx/wheelylove-ratelimit.conf` и
+двата location-а), броена по реалното клиентско IP за ВЯРКА заявка към пътя —
 не по хедъра `Next-Action`, защото обикновена `<form>` публикация (progressive enhancement) не го изпраща.
 Типът и големината на файла се проверяват от приложението след качването. Директните външни заявки към
 `/api/internal/` получават 404 (както `/api/cron/`) — маршрутът е достъпен само като internal subrequest.
 Ако някой ден качването стане публично, този лимит трябва да се премахне и да се ползва директен S3-подобен upload.
 
+**ВНИМАНИЕ - развръщане на промяна по nginx:** `deploy/deploy.sh` НЕ копира nginx конфигурацията и НЕ прави
+reload — той само сравнява файловете и предупреждава при разлика ("firewall/nginx files in this release differ").
+След release, който променя `deploy/nginx/*`, трябва ръчно на VPS-то:
+`bash /srv/wheelylove/deploy/install.sh` (идемпотентен; инсталира conf-овете, прави `nginx -t` ПРЕД reload и
+само ги връща при грешка) — или ръчно `install -m 0644` на трите файла + `nginx -t && systemctl reload nginx`.
+Без тази стъпка новият `location /admin/instructors` (9 MB за снимки на инструктори) не съществува на проксито
+и качването на снимка над 2 MB ще умре с 413 от nginx.
+
 ## 9. nginx, CSP, ограничаване на заявките
 
 - vhost: 80 -> 301 към https; 443 със сертификата `/etc/ssl/cloudflare/purepoint-origin.crt` (покрива `*.purepoint.bg`);
   `include /etc/nginx/cloudflare-allow.conf` (проверено: файлът и сертификатите съществват);
-  `client_max_body_size 2m` глобално и `55m` само за `/admin/gallery` - с проверка за валидна админ сесия през
+  `client_max_body_size 2m` глобално и по-големи тела само за admin качванията: `55m` за `/admin/gallery` и
+  `9m` за `/admin/instructors` - с проверка за валидна админ сесия през
   `auth_request` (вж. т. 8а) и отделна rate-limit зона; proxy таймаути 60 s (Cloudflare реже на ~100 s).
 - Ограничаване: `/api/` 30 заявки/мин на клиент (burst 20); server actions (заявки с хедър `Next-Action`) 60/мин
   (burst 30); качване в галерията (`/admin/gallery`) - отделна зона 6/мин (burst 3), ключът е реалният клиентски IP от

@@ -9,9 +9,12 @@ export default async function AdminSessionsPage() {
   await requireAdminPage();
   const db = getDb();
   const allSports = await db.select().from(sports).orderBy(asc(sports.name));
-  const allInstructors = await db
-    .select()
+  // New sessions: only active instructors. Editing an existing session keeps
+  // its own (possibly archived) instructor selectable so the row stays valid.
+  const activeInstructors = await db
+    .select({ id: instructors.id, name: instructors.name })
     .from(instructors)
+    .where(isNull(instructors.archivedAt))
     .orderBy(asc(instructors.name));
   const allSessions = await db
     .select({
@@ -37,7 +40,7 @@ export default async function AdminSessionsPage() {
     <div>
       <h1 className="text-2xl font-bold">Часове по календари</h1>
 
-      {allInstructors.length === 0 ? (
+      {activeInstructors.length === 0 ? (
         <p className="mt-4 text-sm text-amber-600">
           Първо добави поне един инструктор в &quot;Инструктори&quot;, преди
           да създадеш часове.
@@ -63,7 +66,7 @@ export default async function AdminSessionsPage() {
             required
             className="rounded-md border border-neutral-300 px-2 py-1.5 sm:col-span-2"
           >
-            {allInstructors.map((i) => (
+            {activeInstructors.map((i) => (
               <option key={i.id} value={i.id}>
                 {i.name}
               </option>
@@ -126,14 +129,22 @@ export default async function AdminSessionsPage() {
       )}
 
       <div className="mt-6 space-y-2">
-        {allSessions.map((s) => (
-          <SessionRow
-            key={s.id}
-            session={s}
-            sports={allSports}
-            instructors={allInstructors}
-          />
-        ))}
+        {allSessions.map((s) => {
+          const rowInstructors = activeInstructors.some((i) => i.id === s.instructorId)
+            ? activeInstructors
+            : [
+                ...activeInstructors,
+                { id: s.instructorId, name: `${s.instructorName} (архивиран)` },
+              ];
+          return (
+            <SessionRow
+              key={s.id}
+              session={s}
+              sports={allSports}
+              instructors={rowInstructors}
+            />
+          );
+        })}
       </div>
     </div>
   );

@@ -23,8 +23,13 @@ describe("admin pages guard", () => {
 
   it.each(files)("%s calls requireAdminPage() first", (f) => {
     const src = readFileSync(f, "utf8");
-    const m = src.match(/export default async function \w+\([^)]*\)\s*\{\s*([^\n]*)/);
+    const m = src.match(/export default async function \w+\([^)]*\)\s*\{([\s\S]*)/);
     expect(m, "default export must be an async function").not.toBeNull();
-    expect(m![1].trim()).toBe("await requireAdminPage();");
+    const firstStatement =
+      m![1]
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.length > 0 && !line.startsWith("//")) ?? "";
+    expect(firstStatement).toBe("await requireAdminPage();");
   });
 });
