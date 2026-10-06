@@ -294,11 +294,11 @@
    (Escape, button, backdrop) and on unmount, with no JS timer involved. */
 html:has(.dialog[open]) {
   overflow: hidden;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 .dialog {
-  width: 100%;
+  width: 100vw;
   height: 100%;
   max-width: 100vw;
   max-height: 100vh;
@@ -491,6 +491,20 @@ html:has(.dialog[open]) {
 }
 
 /* Short landscape phones: tighter chrome so the media keeps room. */
+@media (max-width: 767px) and (min-height: 481px) {
+  .shell {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 1rem);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 1rem);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8rem);
+  }
+  .sidePrev, .sideNext {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 4.25rem);
+  }
+  .sidePrev { left: calc(50% - 3.25rem); }
+  .sideNext { right: calc(50% - 3.25rem); }
+}
+
 @media (max-height: 480px) {
   .shell {
     padding-top: calc(env(safe-area-inset-top, 0px) + 2.5rem);
