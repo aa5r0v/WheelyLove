@@ -203,49 +203,6 @@ body {
   }
 }
 
-/* --- Lightbox (modal) --- */
-
-.lightbox-backdrop {
-  opacity: 1;
-  transition: opacity 250ms var(--ease-out);
-
-  @starting-style {
-    opacity: 0;
-  }
-}
-
-.lightbox-backdrop[data-open="false"] {
-  opacity: 0;
-}
-
-.lightbox-content {
-  transform-origin: center;
-  opacity: 1;
-  transform: scale(1);
-  transition:
-    opacity 250ms var(--ease-out),
-    transform 250ms var(--ease-out);
-
-  @starting-style {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-}
-
-.lightbox-content[data-open="false"] {
-  opacity: 0;
-  transform: scale(0.96);
-}
-
-.lightbox-media {
-  opacity: 1;
-  transition: opacity 200ms ease;
-
-  @starting-style {
-    opacity: 0;
-  }
-}
-
 /* No JS to flip data-visible: don't hide content behind it */
 @media (scripting: none) {
   .reveal {
@@ -270,9 +227,7 @@ body {
     transform: none;
   }
   .mobile-menu,
-  .pop-in,
-  .lightbox-content,
-  .lightbox-media {
+  .pop-in {
     transform: none !important;
   }
   .press:active {

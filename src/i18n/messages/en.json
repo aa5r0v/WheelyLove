@@ -118,10 +118,20 @@
   },
   "gallery": {
     "title": "Gallery",
-    "empty": "No content yet.",
+    "eyebrow": "The studio",
+    "intro": "What a class with us looks like — pedals, sweat and good vibes, captured in the studio.",
+    "countPhotos": "{count, plural, one {# photo} other {# photos}}",
+    "countVideos": "{count, plural, one {# video} other {# videos}}",
+    "empty": "No photos yet — we'll add some soon.",
+    "altFallback": "Photo from a class at the WheelyLove studio",
+    "videoLabel": "Video",
+    "brokenMedia": "File unavailable.",
+    "openMedia": "Open: {caption}",
+    "counter": "{current} / {total}",
     "close": "Close",
     "prev": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "endLink": "See the schedule and pick a class →"
   },
   "signIn": {
     "title": "Sign in",

@@ -1,0 +1,526 @@
+/* Gallery: editorial band composition + native-dialog lightbox.
+   Colors, fonts and easing curves come from the global tokens (globals.css);
+   everything in this file is gallery-scoped. Spans/ratios per breakpoint:
+   >=1024px = 6 columns, 768–1023px = 4 columns, <768px = single column. */
+
+/* ---------- composition ---------- */
+
+.bands {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.band {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.tile {
+  margin: 0;
+  min-width: 0;
+}
+
+.tileBtn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  text-align: left;
+}
+
+.frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--color-ink);
+  transition: border-color 200ms var(--ease-out);
+}
+
+.tileBtn:focus-visible .frame {
+  border-color: var(--color-accent);
+}
+
+.media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 500ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tileBtn:hover .frame {
+    border-color: var(--color-accent);
+  }
+  .tileBtn:hover .media {
+    transform: scale(1.045);
+  }
+}
+
+.badge {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  background: rgb(10 10 10 / 0.72);
+  color: var(--color-paper);
+  font-family: var(--font-oswald);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.openHint {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  background: rgb(10 10 10 / 0.72);
+  color: white;
+  pointer-events: none;
+}
+
+.brokenTile {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--color-ink);
+  color: rgb(255 255 255 / 0.55);
+  font-family: var(--font-oswald);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Desktop (>=1024px): 6 columns, every band's spans total 6 (no holes). */
+
+.statement .slotA {
+  grid-column: span 6;
+}
+.statement .slotA .frame {
+  aspect-ratio: 16 / 9;
+}
+
+.duo .slotA {
+  grid-column: span 4;
+}
+.duo .slotA .frame {
+  aspect-ratio: 3 / 2;
+}
+.duo .slotB {
+  grid-column: span 2;
+}
+.duo .slotB .frame {
+  aspect-ratio: 3 / 4;
+}
+
+.mirror .slotA {
+  grid-column: span 2;
+}
+.mirror .slotA .frame {
+  aspect-ratio: 3 / 4;
+}
+.mirror .slotB {
+  grid-column: span 4;
+}
+.mirror .slotB .frame {
+  aspect-ratio: 3 / 2;
+}
+
+.trio .slotA {
+  grid-column: span 2;
+}
+.trio .slotA .frame {
+  aspect-ratio: 4 / 3;
+}
+.trio .slotB {
+  grid-column: span 2;
+}
+.trio .slotB .frame {
+  aspect-ratio: 1 / 1;
+}
+.trio .slotC {
+  grid-column: span 2;
+}
+.trio .slotC .frame {
+  aspect-ratio: 3 / 4;
+}
+
+.pair .slotA {
+  grid-column: span 3;
+}
+.pair .slotA .frame {
+  aspect-ratio: 4 / 3;
+}
+.pair .slotB {
+  grid-column: span 3;
+}
+.pair .slotB .frame {
+  aspect-ratio: 4 / 3;
+}
+
+.solo .slotA {
+  grid-column: span 6;
+}
+.solo .slotA .frame {
+  aspect-ratio: 3 / 2;
+}
+
+/* Tablet (768–1023px): 4 columns, spans total 4. */
+
+@media (max-width: 1023px) {
+  .band {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .statement .slotA {
+    grid-column: span 4;
+  }
+  .statement .slotA .frame {
+    aspect-ratio: 16 / 10;
+  }
+
+  .duo .slotA {
+    grid-column: span 2;
+  }
+  .duo .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .duo .slotB {
+    grid-column: span 2;
+  }
+  .duo .slotB .frame {
+    aspect-ratio: 3 / 4;
+  }
+
+  .mirror .slotA {
+    grid-column: span 2;
+  }
+  .mirror .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .mirror .slotB {
+    grid-column: span 2;
+  }
+  .mirror .slotB .frame {
+    aspect-ratio: 3 / 4;
+  }
+
+  .pair .slotA {
+    grid-column: span 2;
+  }
+  .pair .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .pair .slotB {
+    grid-column: span 2;
+  }
+  .pair .slotB .frame {
+    aspect-ratio: 4 / 3;
+  }
+
+  .trio .slotA { grid-column: span 4; }
+
+  .solo .slotA {
+    grid-column: span 4;
+  }
+  .solo .slotA .frame {
+    aspect-ratio: 3 / 2;
+  }
+}
+
+/* Mobile (<768px): single column, ratio variety keeps the rhythm. */
+
+@media (max-width: 767px) {
+  .band {
+    grid-template-columns: 1fr;
+  }
+
+  .band > .tile { grid-column: 1 / -1; }
+
+  .statement .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .duo .slotA .frame {
+    aspect-ratio: 1 / 1;
+  }
+  .duo .slotB .frame {
+    aspect-ratio: 3 / 4;
+  }
+  .mirror .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .mirror .slotB .frame {
+    aspect-ratio: 1 / 1;
+  }
+  .trio .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .trio .slotB .frame {
+    aspect-ratio: 1 / 1;
+  }
+  .trio .slotC .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .pair .slotA .frame {
+    aspect-ratio: 1 / 1;
+  }
+  .pair .slotB .frame {
+    aspect-ratio: 4 / 3;
+  }
+  .solo .slotA .frame {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* ---------- lightbox ---------- */
+
+/* Native modal dialog locks background interaction; the page scroll lock
+   follows the dialog's own open state, so it is restored on any close path
+   (Escape, button, backdrop) and on unmount, with no JS timer involved. */
+html:has(.dialog[open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+.dialog {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-paper);
+  overflow: hidden;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 230ms var(--ease-out),
+    transform 230ms var(--ease-out);
+}
+
+.dialog[data-closing="true"] {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+.dialog::backdrop {
+  background: rgb(10 10 10 / 0.95);
+  opacity: 1;
+  transition: opacity 230ms var(--ease-out);
+}
+
+.dialog[data-closing="true"]::backdrop {
+  opacity: 0;
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  .dialog::backdrop {
+    opacity: 0;
+  }
+}
+
+.shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 3.25rem);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 3.25rem);
+  padding-left: calc(env(safe-area-inset-left, 0px) + 3.5rem);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 3.5rem);
+}
+
+.stage {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Horizontal swipes are ours, vertical drags keep scrolling. */
+  touch-action: pan-y;
+}
+
+.stage img,
+.stage video {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+/* Media swap: remount per item, animate in — no timers to race. */
+.mediaAnim {
+  animation: media-in 220ms var(--ease-out) both;
+}
+
+@keyframes media-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+.topbar {
+  z-index: 2;
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.topbar .iconBtn { margin-left: auto; }
+.sidePrev, .sideNext { z-index: 2; }
+
+.counter {
+  padding: 0.35rem 0.65rem;
+  background: rgb(10 10 10 / 0.6);
+  color: rgb(255 255 255 / 0.8);
+  font-family: var(--font-oswald);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.iconBtn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background: rgb(10 10 10 / 0.6);
+  color: rgb(255 255 255 / 0.85);
+  font-family: var(--font-oswald);
+  font-size: 22px;
+  line-height: 1;
+  pointer-events: auto;
+  transition:
+    background-color 160ms var(--ease-out),
+    color 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+
+.iconBtn:hover {
+  background: rgb(10 10 10 / 0.85);
+  color: var(--color-accent-bright);
+}
+
+.iconBtn:active {
+  transform: scale(0.96);
+}
+
+.sidePrev {
+  position: absolute;
+  top: calc(50% - 1.375rem);
+  left: calc(env(safe-area-inset-left, 0px) + 0.75rem);
+}
+
+.sideNext {
+  position: absolute;
+  top: calc(50% - 1.375rem);
+  right: calc(env(safe-area-inset-right, 0px) + 0.75rem);
+}
+
+.sideBtnFont {
+  font-size: 30px;
+  padding-bottom: 0.25rem;
+}
+
+.captionBar {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  max-width: min(90%, 40rem);
+  padding: 0.35rem 0.8rem;
+  background: rgb(10 10 10 / 0.6);
+  color: rgb(255 255 255 / 0.85);
+  font-size: 0.875rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.brokenStage {
+  display: grid;
+  place-items: center;
+  min-width: 12rem;
+  min-height: 6rem;
+  padding: 2rem 3rem;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background: rgb(10 10 10 / 0.5);
+  color: rgb(255 255 255 / 0.6);
+  font-family: var(--font-oswald);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Short landscape phones: tighter chrome so the media keeps room. */
+@media (max-height: 480px) {
+  .shell {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 2.5rem);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.5rem);
+  }
+.topbar {
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  }
+  .captionBar {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+}
+
+/* ---------- reduced motion: gentler, not zero ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .media {
+    transition: none;
+  }
+  .tileBtn:hover .media { transform: none; }
+  .iconBtn:active { transform: none; }
+  .dialog::backdrop { transition-duration: 120ms; }
+  .mediaAnim {
+    animation: none;
+  }
+  .dialog {
+    transition: opacity 120ms var(--ease-out);
+    transform: none;
+  }
+  .dialog[data-closing="true"] {
+    transform: none;
+  }
+}

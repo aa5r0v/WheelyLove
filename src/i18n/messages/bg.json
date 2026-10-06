@@ -118,10 +118,20 @@
   },
   "gallery": {
     "title": "Галерия",
-    "empty": "Все още няма съдържание.",
+    "eyebrow": "Студиото",
+    "intro": "Как изглежда една тренировка при нас — педали, пот и добро настроение, уловени в студиото.",
+    "countPhotos": "{count, plural, one {# снимка} other {# снимки}}",
+    "countVideos": "{count, plural, one {# клип} other {# клипа}}",
+    "empty": "Все още няма качени снимки — скоро ще добавим.",
+    "altFallback": "Снимка от тренировка в студио WheelyLove",
+    "videoLabel": "Видео",
+    "brokenMedia": "Файлът не е наличен.",
+    "openMedia": "Отвори: {caption}",
+    "counter": "{current} / {total}",
     "close": "Затвори",
     "prev": "Предишна",
-    "next": "Следваща"
+    "next": "Следваща",
+    "endLink": "Виж графика и избери тренировка →"
   },
   "signIn": {
     "title": "Вход",
