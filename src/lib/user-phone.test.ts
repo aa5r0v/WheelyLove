@@ -18,7 +18,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports, user as userTable } from "@/db/schema";
 import { POST as checkout } from "@/app/api/checkout/route";
-import { getOwnPhone, updateOwnPhone } from "@/app/my-bookings/actions";
+import { getOwnPhone, updateOwnPhone } from "@/app/[locale]/my-bookings/actions";
 import { deleteUser, makeVerifiedUser } from "@/lib/test-helpers";
 
 const db = getDb();

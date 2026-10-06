@@ -36,9 +36,21 @@ export function sessionCalendarTitle(sportName: string): string {
   return `WheelyLove: ${sportName}`;
 }
 
-export function sessionCalendarDescription(instructorName: string): string {
-  return `Инструктор: ${instructorName}. Плащане на място.\nКак да стигна: ${STUDIO_DIRECTIONS_URL}`;
+const CALENDAR_DESCRIPTIONS = {
+  bg: (instructorName: string) =>
+    `Инструктор: ${instructorName}. Плащане на място.\nКак да стигна: ${STUDIO_DIRECTIONS_URL}`,
+  en: (instructorName: string) =>
+    `Instructor: ${instructorName}. Payment on site.\nHow to get here: ${STUDIO_DIRECTIONS_URL}`,
+} as const;
+
+export function sessionCalendarDescription(instructorName: string, locale: "bg" | "en" = "bg"): string {
+  return CALENDAR_DESCRIPTIONS[locale](instructorName);
 }
+
+const ICS_REMINDER_TEXT = {
+  bg: "Напомняне: тренировката ти започва след 2 часа.",
+  en: "Reminder: your class starts in 2 hours.",
+} as const;
 
 // RFC 5545 TEXT escaping: backslash, semicolon, comma and line breaks.
 function escapeText(value: string): string {
@@ -86,6 +98,7 @@ export function buildSessionIcs(params: {
   end: Date;
   description: string;
   now: Date;
+  locale?: "bg" | "en";
 }): string {
   const text = (name: string, value: string) => foldLine(`${name}:${escapeText(value)}`);
   const stamp = (name: string, d: Date) => `${name}:${formatUtcStamp(d)}`;
@@ -109,7 +122,7 @@ export function buildSessionIcs(params: {
     `URL:${STUDIO_MAP_URL}`,
     "BEGIN:VALARM",
     "ACTION:DISPLAY",
-    text("DESCRIPTION", "Напомняне: тренировката ти започва след 2 часа."),
+    text("DESCRIPTION", ICS_REMINDER_TEXT[params.locale ?? "bg"]),
     "TRIGGER:-PT2H",
     "END:VALARM",
     "END:VEVENT",

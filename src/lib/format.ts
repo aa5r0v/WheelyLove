@@ -1,8 +1,10 @@
+import { localeTag, type AppLocale } from "./locale";
+
 // The studio is in Bulgaria but the servers run in UTC — always pin times to Sofia.
 export const STUDIO_TIME_ZONE = "Europe/Sofia";
 
-export function formatDateLong(d: Date) {
-  return d.toLocaleDateString("bg-BG", {
+export function formatDateLong(d: Date, locale: AppLocale = "bg") {
+  return d.toLocaleDateString(localeTag(locale), {
     timeZone: STUDIO_TIME_ZONE,
     weekday: "long",
     day: "numeric",
@@ -10,16 +12,16 @@ export function formatDateLong(d: Date) {
   });
 }
 
-export function formatTime(d: Date) {
-  return d.toLocaleTimeString("bg-BG", {
+export function formatTime(d: Date, locale: AppLocale = "bg") {
+  return d.toLocaleTimeString(localeTag(locale), {
     timeZone: STUDIO_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-export function formatDateTimeLong(d: Date) {
-  return d.toLocaleString("bg-BG", {
+export function formatDateTimeLong(d: Date, locale: AppLocale = "bg") {
+  return d.toLocaleString(localeTag(locale), {
     timeZone: STUDIO_TIME_ZONE,
     weekday: "long",
     day: "numeric",
@@ -29,8 +31,8 @@ export function formatDateTimeLong(d: Date) {
   });
 }
 
-export function formatDateTimeShort(d: Date) {
-  return d.toLocaleString("bg-BG", {
+export function formatDateTimeShort(d: Date, locale: AppLocale = "bg") {
+  return d.toLocaleString(localeTag(locale), {
     timeZone: STUDIO_TIME_ZONE,
     day: "numeric",
     month: "long",

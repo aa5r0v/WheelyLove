@@ -31,8 +31,10 @@ COPY drizzle ./drizzle
 COPY src/db ./src/db
 # Admin CLIs (set-instructor, seed-demo, remove-demo) run in this image through tsx
 # (devDependency, present after the full npm ci). They import only src/db and
-# src/lib/{format,instructor-link}.ts, all with relative paths (no tsconfig needed).
-COPY src/lib/format.ts src/lib/instructor-link.ts ./src/lib/
+# src/lib/{format,instructor-link,locale,sport-images}.ts, all with relative
+# paths (no tsconfig needed); format.ts needs locale.ts, demo-data.ts needs
+# sport-images.ts.
+COPY src/lib/format.ts src/lib/instructor-link.ts src/lib/locale.ts src/lib/sport-images.ts ./src/lib/
 COPY scripts ./scripts
 USER node
 CMD ["node_modules/.bin/drizzle-kit", "migrate"]

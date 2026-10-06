@@ -40,7 +40,7 @@ import {
 import { getAuth } from "@/lib/auth";
 import { POST as checkout } from "@/app/api/checkout/route";
 import { POST as authPost } from "@/app/api/auth/[...all]/route";
-import { confirmCashBooking } from "@/app/admin/actions";
+import { confirmCashBooking } from "@/app/[locale]/admin/actions";
 import {
   DEFAULT_PASSWORD,
   deleteUser,
@@ -247,11 +247,82 @@ describe("sign-up does not reveal existing emails", () => {
   });
 });
 
+describe("auth email language follows the page (x-app-locale header)", () => {
+  function authReq(path: string, body: unknown, headers: Record<string, string> = {}) {
+    return new Request(`http://localhost/api/auth/${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("a fresh /en sign-up without any cookie sends the English verification letter", async () => {
+    const email = `${tag}-ensu@test.local`;
+    createdUserEmails.push(email);
+    mocks.verification.mockClear();
+    await db.delete(rateLimit);
+
+    const res = await authPost(
+      authReq("sign-up/email", { name: "EN", email, password: DEFAULT_PASSWORD }, { "x-app-locale": "en" })
+    );
+    expect(res.status).toBe(200);
+    expect(mocks.verification).toHaveBeenCalledTimes(1);
+    const call = mocks.verification.mock.calls[0] as unknown as [{ locale?: string }];
+    expect(call[0].locale).toBe("en");
+  });
+
+  it("a stale en cookie on a Bulgarian page must not switch the letter to English", async () => {
+    const email = `${tag}-bgsu@test.local`;
+    createdUserEmails.push(email);
+    mocks.verification.mockClear();
+    await db.delete(rateLimit);
+
+    await authPost(
+      authReq("sign-up/email", { name: "BG", email, password: DEFAULT_PASSWORD }, {
+        "x-app-locale": "bg",
+        cookie: "NEXT_LOCALE=en",
+      })
+    );
+    const call = mocks.verification.mock.calls.at(-1) as unknown as [{ locale?: string }];
+    expect(call[0].locale).toBe("bg");
+  });
+
+  it("a fresh /en forgot-password without any cookie sends the English reset letter", async () => {
+    const email = `${tag}-enreset@test.local`;
+    createdUserEmails.push(email);
+    const user = await signUpUser({ email });
+    await db.update(userTable).set({ emailVerified: true }).where(eq(userTable.id, user.id));
+    mocks.reset.mockClear();
+
+    await authPost(
+      authReq("request-password-reset", { email, redirectTo: "/en/reset-password" }, { "x-app-locale": "en" })
+    );
+    expect(mocks.reset).toHaveBeenCalledTimes(1);
+    const call = mocks.reset.mock.calls[0] as unknown as [{ locale?: string }];
+    expect(call[0].locale).toBe("en");
+  });
+
+  it("the existing-account warning follows the page language too", async () => {
+    const taken = `${tag}-taken3@test.local`;
+    createdUserEmails.push(taken);
+    await signUpUser({ email: taken });
+    mocks.existing.mockClear();
+    await db.delete(rateLimit);
+
+    await authPost(
+      authReq("sign-up/email", { name: "EN", email: taken, password: DEFAULT_PASSWORD }, { "x-app-locale": "en" })
+    );
+    const call = mocks.existing.mock.calls.at(-1) as unknown as [{ locale?: string }];
+    expect(call[0].locale).toBe("en");
+  });
+});
+
 describe("password reset", () => {
   const email = `${tag}-reset@test.local`;
   const newPassword = "new-password-654321";
 
   beforeAll(async () => {
+    mocks.reset.mockClear();
     createdUserEmails.push(email);
     const user = await signUpUser({ email });
     // requireEmailVerification: only a verified account can sign in at all.

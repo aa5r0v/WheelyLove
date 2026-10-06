@@ -64,6 +64,13 @@
       "when": 1791208745319,
       "tag": "0008_user_phone",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791268479152,
+      "tag": "0009_booking_locale",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,8 @@
 // send the user to another origin after login, so anything but a clean "/…"
 // is replaced with the schedule (the one page every flow must lead to).
 
+import { localeHref, type AppLocale } from "./locale";
+
 export const DEFAULT_NEXT = "/schedule";
 
 function isSafeRelativePath(value: string): boolean {
@@ -30,23 +32,30 @@ export function safeNext(value: string | null | undefined): string {
   return isSafeRelativePath(value) && isSafeRelativePath(decoded) ? value : DEFAULT_NEXT;
 }
 
-// /sign-in?next=<sanitized target>
-export function signInUrl(next: string): string {
-  return `/sign-in?next=${encodeURIComponent(safeNext(next))}`;
+// /sign-in?next=<sanitized target> — страницата за вход е на езика на
+// страницата, от която идва препратката; самият next се пази непроменен.
+export function signInUrl(next: string, locale: AppLocale = "bg"): string {
+  return `${localeHref(locale, "/sign-in")}?next=${encodeURIComponent(safeNext(next))}`;
 }
 
 // Where the email-verification letter leads: the sign-in page (no automatic
 // session - see src/lib/auth.ts), with a "confirmed" note and the way back.
-export function verifiedSignInUrl(next: string | null | undefined): string {
-  return `/sign-in?verified=1&next=${encodeURIComponent(safeNext(next))}`;
+export function verifiedSignInUrl(
+  next: string | null | undefined,
+  locale: AppLocale = "bg"
+): string {
+  return `${localeHref(locale, "/sign-in")}?verified=1&next=${encodeURIComponent(safeNext(next))}`;
 }
 
 // The sign-in link for a guest tapping a session button: keeps the current page
 // (path + query) and marks the chosen session so the page can reopen it after login.
 export function sessionSignInHref(page: string, sessionId: number | string): string {
+  // Езикът се чете от самия път (/en/…), ПРЕДИ санитизацията: дори враждебен
+  // next да падне към /schedule, екранът за вход остава на езика на страницата.
+  const locale: AppLocale = page === "/en" || page.startsWith("/en/") ? "en" : "bg";
   const safe = safeNext(page);
   const [path, qs] = safe.split("?");
   const params = new URLSearchParams(qs ?? "");
   params.set("session", String(sessionId));
-  return signInUrl(`${path}?${params.toString()}`);
+  return signInUrl(`${path}?${params.toString()}`, locale);
 }

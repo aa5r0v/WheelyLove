@@ -26,6 +26,7 @@ export async function GET(req: Request) {
       id: bookings.id,
       sessionId: bookings.sessionId,
       userEmail: bookings.userEmail,
+      locale: bookings.locale,
       startTime: classSessions.startTime,
       endTime: classSessions.endTime,
       sportName: sports.name,
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
     if (!claimed) continue;
 
     sent++;
+    // Напомнянето ползва ЗАПАЗЕНИЯ локейл на резервацията, не текущия cookie.
     await sendBookingReminderEmail({
       to: b.userEmail,
       sessionId: b.sessionId,
@@ -63,6 +65,7 @@ export async function GET(req: Request) {
       instructorName: b.instructorName,
       startTime: b.startTime,
       endTime: b.endTime,
+      locale: b.locale === "en" ? "en" : "bg",
     });
   }
 

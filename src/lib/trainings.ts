@@ -8,6 +8,20 @@ export const LEVEL_LABELS: Record<SportLevel, string> = {
   advanced: "Напреднали",
 };
 
+const LEVEL_LABELS_EN: Record<SportLevel, string> = {
+  all: "All levels",
+  beginner: "Beginners",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+};
+
+// Публичните страници показват етикета на езика на страницата; админ панелът
+// остава на български (LEVEL_LABELS директно).
+export function levelLabel(level: string, locale: "bg" | "en" = "bg"): string {
+  const labels = locale === "en" ? LEVEL_LABELS_EN : LEVEL_LABELS;
+  return labels[level as SportLevel] ?? labels.all;
+}
+
 export function parseLevel(v: FormDataEntryValue | null): SportLevel {
   const s = String(v ?? "");
   return (SPORT_LEVELS as readonly string[]).includes(s) ? (s as SportLevel) : "all";

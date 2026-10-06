@@ -2,6 +2,7 @@ import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { classSessions, sports, waitlistEntries } from "@/db/schema";
 import { sendWaitlistSpotOpenEmail } from "./email";
+import { localeHref } from "./locale";
 
 // Several spots freeing up in quick succession shouldn't spam the same people.
 const RENOTIFY_AFTER_MS = 30 * 60 * 1000;
@@ -42,18 +43,19 @@ export async function notifyWaitlist(sessionId: number) {
         or(isNull(waitlistEntries.notifiedAt), lt(waitlistEntries.notifiedAt, cutoff))
       )
     )
-    .returning({ userEmail: waitlistEntries.userEmail });
+    .returning({ userEmail: waitlistEntries.userEmail, locale: waitlistEntries.locale });
 
-  const bookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/sports/${session.sportSlug}`;
-
+  // Всеки човек получава писмото на ЕЗИКА, запазен при записването му в списъка.
   await Promise.all(
-    toNotify.map((entry) =>
-      sendWaitlistSpotOpenEmail({
+    toNotify.map((entry) => {
+      const locale = entry.locale === "en" ? ("en" as const) : ("bg" as const);
+      return sendWaitlistSpotOpenEmail({
         to: entry.userEmail,
         sportName: session.sportName,
         startTime: session.startTime,
-        bookUrl,
-      })
-    )
+        bookUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}${localeHref(locale, `/sports/${session.sportSlug}`)}`,
+        locale,
+      });
+    })
   );
 }

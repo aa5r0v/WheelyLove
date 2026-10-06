@@ -9,6 +9,15 @@ import {
   sendVerificationEmail,
 } from "./email";
 import { googleCredentials } from "./google-auth";
+import { requestLocale } from "./locale";
+
+// Езикът на автентикационните писма: изричният x-app-locale header, който
+// пращат формите (надежден сигнал и при директно отворен /en без cookie),
+// иначе NEXT_LOCALE cookie-то (изричен избор чрез LanguageSwitch); без
+// никой от двата — български.
+function authEmailLocale(request?: Request) {
+  return requestLocale(request?.headers);
+}
 
 // Self-hosted auth (email + password) in our own Postgres. Resend sends the auth
 // emails; Google sign-in is optional (see socialProviders below).
@@ -36,16 +45,16 @@ function createAuth() {
       requireEmailVerification: true,
       revokeSessionsOnPasswordReset: true,
       // The reset email always looks the same, whether or not the address exists.
-      sendResetPassword: async ({ user, url }) => {
-        await sendPasswordResetEmail({ to: user.email, url });
+      sendResetPassword: async ({ user, url }, request) => {
+        await sendPasswordResetEmail({ to: user.email, url, locale: authEmailLocale(request) });
       },
       // A sign-up attempt on an already-registered address must reach the
       // OWNER of that address (someone may be trying to occupy it) with a
       // forgot-password link. Dispatched exactly like the verification letter
       // below, through the same runInBackgroundOrAwait in better-auth's
       // sign-up route.
-      onExistingUserSignUp: async ({ user }) => {
-        await sendExistingAccountEmail({ to: user.email });
+      onExistingUserSignUp: async ({ user }, request) => {
+        await sendExistingAccountEmail({ to: user.email, locale: authEmailLocale(request) });
       },
     },
     // Google sign-in only when GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are both
@@ -68,8 +77,8 @@ function createAuth() {
       // and an attacker's own unverified link becomes a one-click login CSRF.
       // The letter leads to /sign-in?verified=1&next=… (verifiedSignInUrl),
       // so the user must prove the password before any session exists.
-      sendVerificationEmail: async ({ user, url }) => {
-        await sendVerificationEmail({ to: user.email, url });
+      sendVerificationEmail: async ({ user, url }, request) => {
+        await sendVerificationEmail({ to: user.email, url, locale: authEmailLocale(request) });
       },
     },
     user: {

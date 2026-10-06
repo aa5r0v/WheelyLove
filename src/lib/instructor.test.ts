@@ -44,8 +44,8 @@ import {
   resolveMonth,
   setBookingAttendance,
 } from "@/lib/instructor";
-import { markAttendance } from "@/app/instructor/actions";
-import { linkInstructorAccess, removeInstructorAccess } from "@/app/admin/actions";
+import { markAttendance } from "@/app/[locale]/instructor/actions";
+import { linkInstructorAccess, removeInstructorAccess } from "@/app/[locale]/admin/actions";
 import { DEFAULT_PASSWORD, deleteUser, signInCookie, signUpUser, verifyUserEmail } from "@/lib/test-helpers";
 
 const db = getDb();

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
 import { safeNext } from "@/lib/safe-next";
+import { localeHref, resolveLocale } from "@/lib/locale";
 
 export default function GoogleButton({
   label,
@@ -12,6 +14,8 @@ export default function GoogleButton({
   // Where to return after Google sign-in; sanitized (only relative paths).
   next?: string;
 }) {
+  const t = useTranslations("google");
+  const locale = resolveLocale(useLocale());
   const [busy, setBusy] = useState(false);
   const target = safeNext(next);
 
@@ -21,7 +25,7 @@ export default function GoogleButton({
     await authClient.signIn.social({
       provider: "google",
       callbackURL: target,
-      errorCallbackURL: `/sign-in?next=${encodeURIComponent(target)}`,
+      errorCallbackURL: `${localeHref(locale, "/sign-in")}?next=${encodeURIComponent(target)}`,
     });
     setBusy(false);
   }
@@ -39,7 +43,7 @@ export default function GoogleButton({
         <path fill="#FBBC05" d="M5.6 14.7a7.2 7.2 0 0 1 0-4.6v-3H1.8a12 12 0 0 0 0 10.6l3.8-3z" />
         <path fill="#EA4335" d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3A12 12 0 0 0 1.8 7.1l3.8 3C6.5 6.8 9 4.8 12 4.8z" />
       </svg>
-      {busy ? "Пренасочване…" : label}
+      {busy ? t("redirecting") : label}
     </button>
   );
 }

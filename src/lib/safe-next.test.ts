@@ -73,6 +73,14 @@ describe("verifiedSignInUrl", () => {
     expect(verifiedSignInUrl("//evil.com")).toBe("/sign-in?verified=1&next=%2Fschedule");
     expect(verifiedSignInUrl(undefined)).toBe("/sign-in?verified=1&next=%2Fschedule");
   });
+
+  it("localizes the sign-in page for en while keeping the original next", () => {
+    expect(verifiedSignInUrl("/en/sports/spinning?session=5", "en")).toBe(
+      "/en/sign-in?verified=1&next=%2Fen%2Fsports%2Fspinning%3Fsession%3D5"
+    );
+    // unsafe next still sanitized in the localized URL
+    expect(verifiedSignInUrl("//evil.com", "en")).toBe("/en/sign-in?verified=1&next=%2Fschedule");
+  });
 });
 
 describe("signInUrl", () => {
@@ -84,6 +92,15 @@ describe("signInUrl", () => {
 
   it("sanitizes the target it embeds", () => {
     expect(signInUrl("//evil.com")).toBe(`/sign-in?next=${encodeURIComponent(DEFAULT_NEXT)}`);
+  });
+
+  it("localizes the sign-in page for en while keeping the original next", () => {
+    expect(signInUrl("/en/my-bookings", "en")).toBe(
+      `/en/sign-in?next=${encodeURIComponent("/en/my-bookings")}`
+    );
+    expect(signInUrl("//evil.com", "en")).toBe(
+      `/en/sign-in?next=${encodeURIComponent(DEFAULT_NEXT)}`
+    );
   });
 });
 
@@ -109,6 +126,19 @@ describe("sessionSignInHref", () => {
   it("sanitizes a hostile page before embedding it", () => {
     expect(sessionSignInHref("//evil.com", 7)).toBe(
       `/sign-in?next=${encodeURIComponent(`${DEFAULT_NEXT}?session=7`)}`
+    );
+  });
+
+  it("derives the language from the /en page: the sign-in screen is English too", () => {
+    expect(sessionSignInHref("/en/sports/spinning", 5)).toBe(
+      `/en/sign-in?next=${encodeURIComponent("/en/sports/spinning?session=5")}`
+    );
+    expect(sessionSignInHref("/en/schedule?d=2026-10-20", 7)).toBe(
+      `/en/sign-in?next=${encodeURIComponent("/en/schedule?d=2026-10-20&session=7")}`
+    );
+    // hostile /en page (control chars): still sanitized inside the localized URL
+    expect(sessionSignInHref("/en/\n/evil.com", 7)).toBe(
+      `/en/sign-in?next=${encodeURIComponent(`${DEFAULT_NEXT}?session=7`)}`
     );
   });
 

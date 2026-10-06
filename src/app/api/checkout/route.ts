@@ -12,6 +12,8 @@ import {
 } from "@/db/schema";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { getSession } from "@/lib/auth";
+import { requestLocale, resolveLocale } from "@/lib/locale";
+import { serverError } from "@/lib/server-messages";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_BOOKINGS = 5;
@@ -24,36 +26,42 @@ function isUniqueViolation(err: unknown) {
 class TooManyBookings extends Error {}
 
 export async function POST(req: Request) {
+  // За грешки преди четенето на тялото: езикът идва от x-app-locale (праща го
+  // BookButton — надежден и без cookie), иначе от NEXT_LOCALE cookie-то.
+  const headerLocale = requestLocale(req.headers);
   const session = await getSession(req.headers);
   if (!session) {
-    return NextResponse.json({ error: "Неоторизиран достъп." }, { status: 401 });
+    return NextResponse.json({ error: serverError("unauth", headerLocale) }, { status: 401 });
   }
   if (!session.user.emailVerified) {
     return NextResponse.json(
-      { error: "Потвърди имейла си, за да резервираш — нов линк можеш да получиш от „Моите резервации“." },
+      { error: serverError("verifyEmailBooking", headerLocale) },
       { status: 403 }
     );
   }
 
-  let payload: { sessionId?: unknown; phone?: unknown };
+  let payload: { sessionId?: unknown; phone?: unknown; locale?: unknown };
   try {
     payload = await req.json();
   } catch {
-    return NextResponse.json({ error: "Невалидна заявка." }, { status: 400 });
+    return NextResponse.json({ error: serverError("invalidRequest", headerLocale) }, { status: 400 });
   }
   const { sessionId, phone: rawPhone } = payload;
+  // Езикът на потребителя (от тялото, whitelist-нат до bg/en; cookie-то е
+  // резервен източник): записва се в резервацията и определя езика на нейните писма.
+  const locale = resolveLocale(payload.locale ?? headerLocale);
   if (
     typeof sessionId !== "number" ||
     !Number.isInteger(sessionId) ||
     typeof rawPhone !== "string"
   ) {
-    return NextResponse.json({ error: "Невалидна заявка." }, { status: 400 });
+    return NextResponse.json({ error: serverError("invalidRequest", locale) }, { status: 400 });
   }
 
   const phone = normalizePhone(rawPhone);
   if (!phone) {
     return NextResponse.json(
-      { error: "Невалиден телефонен номер. Въведи български (08… или +359…) или международен номер (+код на държавата…)." },
+      { error: serverError("invalidPhone", locale) },
       { status: 400 }
     );
   }
@@ -75,10 +83,10 @@ export async function POST(req: Request) {
     .where(eq(classSessions.id, sessionId));
 
   if (!classSession || classSession.cancelledAt) {
-    return NextResponse.json({ error: "Часът не съществува." }, { status: 404 });
+    return NextResponse.json({ error: serverError("sessionNotFound", locale) }, { status: 404 });
   }
   if (classSession.startTime.getTime() <= Date.now()) {
-    return NextResponse.json({ error: "Часът вече е започнал или е минал." }, { status: 400 });
+    return NextResponse.json({ error: serverError("sessionStarted", locale) }, { status: 400 });
   }
 
   const [existingBooking] = await db
@@ -92,7 +100,7 @@ export async function POST(req: Request) {
       )
     );
   if (existingBooking) {
-    return NextResponse.json({ error: "Вече имаш резервация за този час." }, { status: 409 });
+    return NextResponse.json({ error: serverError("duplicateBooking", locale) }, { status: 409 });
   }
 
   const email = session.user.email;
@@ -141,6 +149,7 @@ export async function POST(req: Request) {
           userPhone: phone,
           status: "pending",
           paymentMethod: "cash",
+          locale,
         })
         .returning();
 
@@ -157,18 +166,18 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof TooManyBookings) {
       return NextResponse.json(
-        { error: "Твърде много опити за резервация. Опитайте отново по-късно." },
+        { error: serverError("rateLimited", locale) },
         { status: 429 }
       );
     }
     if (isUniqueViolation(err)) {
-      return NextResponse.json({ error: "Вече имаш резервация за този час." }, { status: 409 });
+      return NextResponse.json({ error: serverError("duplicateBooking", locale) }, { status: 409 });
     }
     throw err;
   }
 
   if (!booking) {
-    return NextResponse.json({ error: "Няма свободни места." }, { status: 409 });
+    return NextResponse.json({ error: serverError("noSpots", locale) }, { status: 409 });
   }
 
   // Remember the number for next time (the booking already keeps its own snapshot).
@@ -186,6 +195,7 @@ export async function POST(req: Request) {
     instructorName: classSession.instructorName,
     startTime: classSession.startTime,
     endTime: classSession.endTime,
+    locale,
   });
   // The id lets /booking/success?s=… show which session was booked.
   return NextResponse.json({ ok: true, bookingId: booking.id });

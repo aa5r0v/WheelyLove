@@ -1,0 +1,164 @@
+import type { Metadata } from "next";
+import { Oswald, Inter } from "next/font/google";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import RegisterServiceWorker from "@/app/register-sw";
+import HeaderNav from "@/app/header-nav";
+import { getSession } from "@/lib/auth";
+import { STUDIO_ADDRESS_LINE, STUDIO_DIRECTIONS_URL } from "@/lib/studio";
+import { routing } from "@/i18n/routing";
+import { Link } from "@/i18n/navigation";
+import "@/app/globals.css";
+
+const oswald = Oswald({
+  variable: "--font-oswald",
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "cyrillic"],
+});
+
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "meta" });
+  // Никакъв canonical тук: споделеният layout не може да твърди, че всяка
+  // детска страница е коренът. Публичните страници си го задават сами
+  // (publicAlternates), частните са noindex.
+  return {
+    title: t("title"),
+    description: t("description"),
+    manifest: "/manifest.webmanifest",
+  };
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  setRequestLocale(locale);
+
+  const tFooter = await getTranslations({ locale, namespace: "footer" });
+  const tNav = await getTranslations({ locale, namespace: "nav" });
+
+  // Reading the session here makes every page dynamic (cookies), which is
+  // fine: nothing may be prerendered with a user context anyway.
+  const session = await getSession();
+
+  return (
+    <html
+      lang={locale}
+      className={`${oswald.variable} ${inter.variable} h-full antialiased`}
+    >
+      <body className="flex min-h-full flex-col bg-paper text-ink">
+        <NextIntlClientProvider>
+          <header className="sticky top-0 z-40 border-b-2 border-accent bg-ink text-paper">
+            <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/logo.png"
+                  alt="WheelyLove"
+                  width={44}
+                  height={44}
+                  className="h-9 w-9 object-contain sm:h-11 sm:w-11"
+                  priority
+                />
+                <span className="font-display text-xl tracking-wide text-paper sm:text-2xl">
+                  WheelyLove
+                </span>
+              </Link>
+              <HeaderNav
+                user={
+                  session
+                    ? {
+                        email: session.user.email,
+                        isAdmin: session.user.role === "admin",
+                        // Only a menu hint; /instructor re-checks everything on the server.
+                        isInstructor: session.user.role === "instructor",
+                      }
+                    : null
+                }
+              />
+            </div>
+          </header>
+          <main className="flex-1">{children}</main>
+          <footer className="border-t-2 border-accent bg-ink px-4 py-10 text-paper sm:px-6">
+            <div className="mx-auto max-w-6xl">
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/logo.png"
+                  alt="WheelyLove"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
+                <p className="font-display text-xl tracking-wide">WheelyLove</p>
+              </div>
+              <p className="mt-2 text-sm text-paper/60">
+                <a href="mailto:wheelylove@abv.bg" className="hover:text-accent">
+                  wheelylove@abv.bg
+                </a>{" "}
+                ·{" "}
+                <a href="tel:+359886573880" className="hover:text-accent">
+                  +359 886 573 880
+                </a>
+              </p>
+              <p className="mt-2 text-sm text-paper/60">
+                {STUDIO_ADDRESS_LINE} ·{" "}
+                <a
+                  href={STUDIO_DIRECTIONS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-accent"
+                >
+                  {tFooter("howToGet")}
+                </a>
+              </p>
+              <p className="mt-4 text-sm text-paper/60">
+                <Link href="/schedule" className="hover:text-accent">
+                  {tNav("schedule")}
+                </Link>{" "}
+                ·{" "}
+                <Link href="/#classes" className="hover:text-accent">
+                  {tNav("trainings")}
+                </Link>{" "}
+                ·{" "}
+                <Link href="/instructors" className="hover:text-accent">
+                  {tNav("instructors")}
+                </Link>
+              </p>
+              <p className="mt-2 text-sm text-paper/60">
+                <Link href="/terms" className="hover:text-accent">
+                  {tFooter("terms")}
+                </Link>{" "}
+                ·{" "}
+                <Link href="/privacy" className="hover:text-accent">
+                  {tFooter("privacy")}
+                </Link>
+              </p>
+            </div>
+          </footer>
+          <RegisterServiceWorker />
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

@@ -83,6 +83,7 @@ export async function cancelBookingAndNotify(
   const [booking] = await db
     .select({
       userEmail: bookings.userEmail,
+      locale: bookings.locale,
       startTime: classSessions.startTime,
       sportName: sports.name,
     })
@@ -96,10 +97,12 @@ export async function cancelBookingAndNotify(
   const cancelled = await cancelBookingAtomic(bookingId);
   if (!cancelled) return;
 
+  // Отказът се пише на запазения при резервацията език, не на текущия cookie.
   await sendBookingCancelledEmail({
     to: booking.userEmail,
     sportName: booking.sportName,
     startTime: booking.startTime,
     reason,
+    locale: booking.locale === "en" ? "en" : "bg",
   });
 }

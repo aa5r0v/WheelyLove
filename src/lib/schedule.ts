@@ -2,8 +2,10 @@ import { and, asc, eq, gt, gte, inArray, isNull, lt, type SQL } from "drizzle-or
 import { getDb } from "@/db";
 import { bookings, classSessions, instructors, sports, waitlistEntries } from "@/db/schema";
 import { formatDateLong, formatPrice, formatTime, fromSofiaDateTime, toSofiaDateInput } from "./format";
-import { LEVEL_LABELS, type SportLevel } from "./trainings";
-import type { CardData } from "@/app/schedule/schedule-list";
+import { levelLabel } from "./trainings";
+import { sportName } from "./sport-content";
+import type { CardData } from "@/app/[locale]/schedule/schedule-list";
+import type { AppLocale } from "@/i18n/routing";
 
 export const SCHEDULE_DAYS = 14;
 // "Almost full" when this many places or fewer are left AND at least half of
@@ -148,18 +150,19 @@ export async function getInstructorUpcomingSessions(
 // instructor profile share it so the two lists can never diverge.
 export function toCardData(
   s: ScheduleSession,
-  state: { booked: boolean; waitlistPosition: number | null }
+  state: { booked: boolean; waitlistPosition: number | null },
+  locale: AppLocale = "bg"
 ): CardData {
   return {
     id: s.id,
-    timeLabel: formatTime(s.startTime),
-    endLabel: formatTime(s.endTime),
-    dateLabel: formatDateLong(s.startTime),
+    timeLabel: formatTime(s.startTime, locale),
+    endLabel: formatTime(s.endTime, locale),
+    dateLabel: formatDateLong(s.startTime, locale),
     durationMin: s.durationMin,
-    sportName: s.sportName,
+    sportName: sportName(s.sportName, locale),
     sportSlug: s.sportSlug,
     sportColor: s.sportColor,
-    levelLabel: LEVEL_LABELS[s.sportLevel as SportLevel] ?? LEVEL_LABELS.all,
+    levelLabel: levelLabel(s.sportLevel, locale),
     instructorName: s.instructorName,
     instructorSlug: s.instructorSlug,
     spotsLeft: s.spotsLeft,

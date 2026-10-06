@@ -156,9 +156,32 @@ body {
   transition:
     opacity 200ms var(--ease-out),
     transform 200ms var(--ease-out);
+  /* 100% = височината на header реда (containing block): менюто никога не
+     излиза под долния ръб на екрана (landscape телефони), а скролва. */
+  max-height: calc(100dvh - 100%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .mobile-menu[data-open="true"] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+/* Same reveal as the mobile menu, for short dropdowns (account disclosure). */
+
+.disclosure-menu {
+  transform-origin: top right;
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+.disclosure-menu[data-open="true"] {
   opacity: 1;
   transform: scale(1) translateY(0);
   pointer-events: auto;

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { authClient } from "@/lib/auth-client";
-import { resendOutcomeText } from "@/app/my-bookings/resend-outcome";
+import { resendOutcomeText } from "@/app/[locale]/my-bookings/resend-outcome";
+import { resolveLocale } from "@/lib/locale";
 import { verifiedSignInUrl } from "@/lib/safe-next";
 
 // The resend flow of the /my-bookings banner, reusable wherever booking is
@@ -15,6 +17,8 @@ export default function ResendVerification({
   email: string;
   callbackURL: string;
 }) {
+  const t = useTranslations("resend");
+  const locale = resolveLocale(useLocale());
   const [state, setState] = useState<"idle" | "busy" | "sent" | "error">("idle");
   const [errorStatus, setErrorStatus] = useState<number | undefined>(undefined);
 
@@ -24,7 +28,8 @@ export default function ResendVerification({
     // as "sent" - the user would wait for a letter that never comes.
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: verifiedSignInUrl(callbackURL),
+      callbackURL: verifiedSignInUrl(callbackURL, locale),
+      fetchOptions: { headers: { 'x-app-locale': locale } },
     });
     if (error) {
       setErrorStatus(typeof error.status === "number" ? error.status : undefined);
@@ -37,7 +42,7 @@ export default function ResendVerification({
   if (state === "sent" || state === "error") {
     return (
       <p className={state === "sent" ? "text-sm text-ink/60" : "text-sm text-red-600"}>
-        {resendOutcomeText(state === "sent", errorStatus)}
+        {resendOutcomeText(state === "sent", errorStatus, locale)}
       </p>
     );
   }
@@ -48,7 +53,7 @@ export default function ResendVerification({
       disabled={state === "busy"}
       className="text-sm text-accent-deep underline underline-offset-2 disabled:opacity-50"
     >
-      {state === "busy" ? "Изпращане…" : "Изпрати нов линк за потвърждение"}
+      {state === "busy" ? t("busy") : t("send")}
     </button>
   );
 }

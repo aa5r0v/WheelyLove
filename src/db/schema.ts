@@ -124,6 +124,9 @@ export const bookings = pgTable(
     attendance: attendanceEnum("attendance").notNull().default("unknown"),
     // Плащането е само на място; стойността в enum-а "card" е наследена от стари данни.
     paymentMethod: paymentMethodEnum("payment_method").notNull().default("cash"),
+    // Езикът на потребителя при създаването (bg/en): напомнянията и отказите
+    // се пишат на него, независимо от текущия cookie на заявката.
+    locale: varchar("locale", { length: 2 }).notNull().default("bg"),
     reminderSentAt: timestamp("reminder_sent_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -144,6 +147,9 @@ export const waitlistEntries = pgTable(
       .references(() => classSessions.id, { onDelete: "cascade" }),
     userId: varchar("user_id", { length: 128 }).notNull(),
     userEmail: varchar("user_email", { length: 256 }).notNull(),
+    // Езикът при записване в списъка — асинхронното известие за свободно място
+    // се пише на него.
+    locale: varchar("locale", { length: 2 }).notNull().default("bg"),
     notifiedAt: timestamp("notified_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
