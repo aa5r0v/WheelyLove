@@ -13,10 +13,10 @@ function getResend() {
   return _resend;
 }
 
-// EMAIL_FROM (e.g. "WheelyLove <adelina@purepoint.bg>") wins; the relay only
+// EMAIL_FROM (e.g. "Your Wheely <adelina@purepoint.bg>") wins; the relay only
 // accepts senders from the Workspace domain.
 const FROM =
-  process.env.EMAIL_FROM?.trim() || `WheelyLove <reservations@${process.env.RESEND_EMAIL_DOMAIN}>`;
+  process.env.EMAIL_FROM?.trim() || `Your Wheely <reservations@${process.env.RESEND_EMAIL_DOMAIN}>`;
 
 // reservations@ has no mailbox — route customer replies to the studio's inbox.
 const STUDIO_EMAIL = "wheelylove@abv.bg";

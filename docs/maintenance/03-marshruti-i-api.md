@@ -1,7 +1,7 @@
 # 03. Маршрути, API и server actions
 
 Пълният списък по-долу е копиран от изхода на `next build` върху комит
-`70fa290` (`ƒ` = динамична сървърна страница, `○` = статична;
+`b2125f3` (`ƒ` = динамична сървърна страница, `○` = статична;
 `.glm-evidence-docs/next-build-head-tail40.txt`). Всички страници живеят под
 `src/app/[locale]/…`, където `[locale]` е `bg` (без префикс в URL) или `en`
 (под `/en`).
@@ -38,11 +38,11 @@
 | `/admin` | admin + потвърден имейл | Табло |
 | `/admin/sessions` | админ | Всички часове: създаване (с повторение N седмици), редакция, отмяна |
 | `/admin/schedule` | админ | Седмични шаблони + бутона „Генерирай 8 седмици“ |
-| `/admin/bookings` | админ | Резервации: търсене/отмяна/„платена на място“ ⟨филтри и странициране ЧАКАЩО⟩ |
+| `/admin/bookings` | админ | Резервации: търсене/отмяна/„платена на място“ |
 | `/admin/sports` | админ | Тренировки: създаване/редакция (цвят, ниво, цени по подразбиране) |
-| `/admin/instructors` | админ | Инструктори: профил, свързване на акаунт ⟨архив/възстановяване/изтриване и форма за създаване ЧАКАЩО⟩ |
+| `/admin/instructors` | админ | Инструктори: профил, свързване на акаунт |
 | `/admin/gallery` | админ | Качване/изтриване на снимки и видеа |
-| `/instructor` | instructor + потвърден имейл (+ незаархивиран ⟨ЧАКАЩО⟩) | Панел на инструктора |
+| `/instructor` | instructor + потвърден имейл (+ незаархивиран) | Панел на инструктора |
 | `/instructor/sessions/[id]` | същото | Един час: записани, присъствие |
 | `/instructor/report` | същото | Месечен доклад (`?month=ГГГГ-ММ`) |
 
@@ -75,21 +75,21 @@ upload само на непрефикснатия път (`src/app/[locale]/admi
 
 | Действие | Ред | Какво прави |
 |---|---|---|
-| `createSession(formData)` | :67 | Ръчен час (+ повторение `repeatWeeks` седмици); изисква активен инструктор в заключена транзакция ⟨ЧАКАЩО⟩ |
+| `createSession(formData)` | :67 | Ръчен час (+ повторение `repeatWeeks` седмици); изисква активен инструктор в заключена транзакция |
 | `updateSession(id, formData)` | :108 | Редакция на час; капацитет ≥ вече записани (`:129`); буди чакащи при промяна (`:176`) |
 | `cancelSession(id)` | :186 | Отменя час + всички активни резервации с писмо „тренировката е отменена“ |
 | `cancelBooking(id)` | :215 | Отменя една резервация + писмо |
 | `confirmCashBooking(id)` | :223 | Бележи платена на място (`pending → confirmed`), без писмо |
 | `createSport` / `updateSport` | :235/:252 | Тренировка: име, цвят, описание, ниво, default-и |
-| `createInstructor` ⟨ЧАКАЩО⟩ | :311 | Нов инструктор (валидация `instructor-profile.ts`) |
-| `updateInstructor(id, …)` ⟨ЧАКАЩО⟩ | :336 | Редакция на публичните полета; без photoUrl/role/mass assignment |
-| `deleteInstructor` ⟨ЧАКАЩО⟩ | :373 | Окончателно изтриване — отказва при часове/шаблони |
-| `archiveInstructor` / `restoreInstructor` ⟨ЧАКАЩО⟩ | :396/:423 | Меко скриване / връщане (вж. [06](06-auth-i-sigurnost.md)) |
-| `linkInstructorAccess` / `removeInstructorAccess` | :450/:470 | Свързване/прекъсване на акаунт на инструктор |
-| `uploadGalleryItem(formData)` | :476 | Качване на снимка/видео (валидация по magic bytes) |
-| `deleteGalleryItem(id)` | :496 | Изтриване на галерия + файла на диска |
-| `createTemplate` / `updateTemplate` / `deleteTemplate` | :526/:540/:581 | Седмичен шаблон; активиране/смяна на инструктор изисква активен инструктор ⟨ЧАКАЩО⟩ |
-| `generateFromTemplates()` | :587 | Генерира часове от активните шаблони (8 седмици) |
+| `uploadInstructorPhoto` / `removeInstructorPhoto` | :300/:326 | Качва или маха профилна снимка (JPEG/PNG/WebP) |
+| `createInstructor` / `updateInstructor` | :375/:420 | Създаване и редакция с валидация |
+| `deleteInstructor` | :457 | Окончателно изтриване — отказва при часове/шаблони |
+| `archiveInstructor` / `restoreInstructor` | :477/:504 | Меко скриване / връщане (вж. [06](06-auth-i-sigurnost.md)) |
+| `linkInstructorAccess` / `removeInstructorAccess` | :531/:551 | Свързване/прекъсване на акаунт на инструктор |
+| `uploadGalleryItem(formData)` | :557 | Качване на снимка/видео (валидация по magic bytes) |
+| `deleteGalleryItem(id)` | :577 | Изтриване на галерия + файла на диска |
+| `createTemplate` / `updateTemplate` / `deleteTemplate` | :607/:621/:662 | Седмичен шаблон; активиране/смяна на инструктор изисква активен инструктор |
+| `generateFromTemplates()` | :668 | Генерира часове от активните шаблони (8 седмици) |
 
 **`src/app/[locale]/sports/[slug]/actions.ts`**: `joinWaitlist(sessionId, locale)`
 (:13), `leaveWaitlist(sessionId)` (:84).

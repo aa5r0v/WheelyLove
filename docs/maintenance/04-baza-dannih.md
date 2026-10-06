@@ -22,7 +22,7 @@ rate_limit (Better Auth, собствена)
 | Таблица | Полета (съществено) | Инварианти / бележки |
 |---|---|---|
 | `sports` (:31) | slug* unique, name*, color default `#6366f1`, description, level (all/beginner/intermediate/advanced), default_duration_min, default_price_cents, default_capacity default 12 | |
-| `instructors` (:44) | slug* unique, name*, bio, photo_url, email, phone, specialties, `user_id` unique → user.id (ON DELETE SET NULL), `archived_at` ⟨ЧАКАЩО, миграция 0010⟩ | Мекото триене (`archived_at`) скрива профила и спира нови часове, без да пипа историята (`schema.ts:56-58`) |
+| `instructors` (:44) | slug* unique, name*, bio, photo_url, email, phone, specialties, `user_id` unique → user.id (ON DELETE SET NULL), `archived_at` (на живо, миграция 0010) | Мекото триене (`archived_at`) скрива профила и спира нови часове, без да пипа историята (`schema.ts:56-58`) |
 | `session_templates` (:67) | sport_id*, instructor_id* (RESTRICT), weekday 1-7 (CHECK `:85`), start_time „ЧЧ:ММ“ **софийско стеново време**, duration_min, capacity, price_cents, active | Седмичен шаблон за генератора |
 | `class_sessions` (:88) | sport_id*, instructor_id* (RESTRICT), start/end*, capacity, `booked_count` default 0, price_cents, cancelled_at, template_id (SET NULL), `template_slot` | **UNIQUE (template_id, template_slot)** (:113) — генераторът не дублира и не създава наново преместен/отменен час |
 | `bookings` (:116) | session_id* (RESTRICT), user_id*, user_email*, user_phone*, status pending/confirmed/cancelled, attendance unknown/attended/no_show, payment_method default `cash`, `locale` default „bg“, reminder_sent_at | **Частичен UNIQUE (session_id, user_id) WHERE status IN (pending, confirmed)** (:138-140) — една активна резервация на потребител за час. `card` в enum-а е наследен; плащането е само на място (`schema.ts:128`) |
@@ -65,8 +65,8 @@ rate_limit (Better Auth, собствена)
   (`deploy/deploy.sh:131-137`); локално/при разработка —
   `npm run db:generate` (генериране от схемата) и `npm run db:migrate`.
 - Към 2026-10-06 журналът има 11 записи: `0000_baseline` …
-  `0009_booking_locale` (на живо) и **`0010_instructor_archived_at` ⟨ЧАКАЩО⟩**
-  (добавя `archived_at` на инструкторите; още не е пускана в продукция).
+  `0009_booking_locale` и `0010_instructor_archived_at` (и двете на живо;
+  последната добавя `archived_at` на инструкторите).
 - Тестът `src/db/migrations.test.ts` проверява, че (а) схемата и миграциите
   са синхронни (kit generate не произвежда промяна), и (б) стената на
   миграциите може да се възпроизведе върху празна база — падането му означава
@@ -87,7 +87,7 @@ rate_limit (Better Auth, собствена)
 
 ```bash
 # Git Bash, D:\dev\Wheelylove — DATABASE_URL вече е в .env.local
-npm run db:migrate     # прилага всички миграции (вкл. 0010 ⟨ЧАКАЩО⟩)
+npm run db:migrate     # прилага всички миграции (вкл. 0010)
 npm run db:seed        # спортове (Спининг/Пилатес/Steel) + инструктори (scripts/seed.ts)
 npx tsx scripts/seed-sessions.ts   # примерни часове относително днес
 ```
@@ -104,7 +104,7 @@ npx tsx scripts/seed-sessions.ts   # примерни часове относи�
 [15-incidenti.md](15-incidenti.md) за безопасния път:
 
 ```sql
-SELECT id, slug, archived_at FROM instructors;                    -- кои са архивирани ⟨ЧАКАЩО⟩
+SELECT id, slug, archived_at FROM instructors;                    -- кои са архивирани
 SELECT id, start_time, capacity, booked_count, cancelled_at
   FROM class_sessions ORDER BY start_time DESC LIMIT 20;          -- заетост
 SELECT b.id, b.status, b.user_email, s.start_time

@@ -7,7 +7,7 @@ Docker контейнери `wheelylove-app` (текущ release) и `wheelylove
 (продукционна база), отпред nginx + Cloudflare. Пускането е с
 `bash /srv/wheelylove/deploy/deploy.sh /tmp/wheelylove-<SHA>.tar.gz`, а
 архивът на release-а се прави на работната станция с `git archive HEAD`.
-Последен пуснат release: `20261006-094012-70fa290`.
+Последен пуснат release: `20261006-153700-b2125f3`.
 
 ## 2. Пътят на един release (стъпка по стъпка)
 

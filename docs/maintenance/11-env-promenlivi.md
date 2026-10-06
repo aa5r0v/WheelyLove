@@ -31,7 +31,7 @@
 | `BETTER_AUTH_SECRET` | подпис на сесийните токени | генерира се от install.sh |
 | `RESEND_API_KEY` | Resend (ако не се ползва SMTP relay) | |
 | `RESEND_EMAIL_DOMAIN` | домейн на подателя `reservations@…` | |
-| `EMAIL_FROM` | подател при SMTP (напр. `WheelyLove <adelina@purepoint.bg>`) | печели над reservations@ |
+| `EMAIL_FROM` | подател при SMTP (напр. `Your Wheely <adelina@purepoint.bg>`) | печели над reservations@ |
 | `SMTP_HOST` / `SMTP_PORT` | SMTP relay (smtp-relay.gmail.com / 587) | зададен HOST → SMTP вместо Resend |
 | `SMTP_USER` / `SMTP_PASS` | само при app-password режим | при IP allowlist остават празни |
 | `SMTP_HELO_NAME` | EHLO име (по подразбиране хостът на сайта) | Google relay иска реално име |

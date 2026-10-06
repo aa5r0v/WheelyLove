@@ -83,7 +83,11 @@ else
   done
 fi
 chown root:root "$WL_ENV"; chmod 600 "$WL_ENV"
-cp -a "$SRC/." "$WL_BASE/deploy/"
+if [ "$(readlink -f "$SRC")" != "$(readlink -f "$WL_BASE/deploy")" ]; then
+  cp -a "$SRC/." "$WL_BASE/deploy/"
+else
+  ok "deployment scripts are already installed in $WL_BASE/deploy"
+fi
 chmod +x "$WL_BASE/deploy/"*.sh "$WL_BASE/deploy/scripts/"*.sh "$WL_BASE/deploy/firewall/"*.sh
 install -m 0755 "$SRC/firewall/wheelylove-firewall.sh" /usr/local/sbin/wheelylove-firewall
 ok "scripts in $WL_BASE/deploy, firewall script in /usr/local/sbin/wheelylove-firewall"

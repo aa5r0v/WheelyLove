@@ -2,10 +2,8 @@
 
 ## 1. Кой откъде идва (снимка 2026-10-06, от координатора)
 
-- **GitHub**: публичното репо `adelina-design/Wheelylove` (main). Push от
-  текущия root акаунт върна **403** към момента — затова локалните комити
-  не са (все) в origin. **Не допускайте, че origin е актуалният източник** —
-  работното копие `D:\dev\Wheelylove` (клон `feat/instructor-panel`) е
+- **GitHub**: публичното репо `adelina-design/Wheelylove` (main). Локалният branch `review/adelina-wheelylove` се подготвя за push и преглед от Аделина. **Не допускайте, че origin е актуалният източник** —
+  работното копие `D:\dev\Wheelylove` (клон `review/adelina-wheelylove`) е
   „снимката на истината“, плюс пуснатите release-и на VPS.
 - Продукцията получава код САМО чрез `git archive HEAD` архиви (вж. [14](14-deploy-i-release.md))
   — никакъв pull на VPS.
@@ -16,7 +14,7 @@
 ## 2. Проверка „какво всъщност върви“ (на VPS, read-only)
 
 ```bash
-cat /srv/wheelylove/state/tag.env                    # APP_TAG=20261006-094012-70fa290
+cat /srv/wheelylove/state/tag.env                    # APP_TAG=20261006-153700-b2125f3
 readlink /srv/wheelylove/current                     # releases/<същият ид>
 ls -1t /srv/wheelylove/releases/ | head              # историята на releases
 docker images wheelylove-app                         # образите (current + prev се пазят)
@@ -27,23 +25,21 @@ docker images wheelylove-app                         # образите (current
 
 ```bash
 git -C /d/dev/Wheelylove log --oneline -5
-# 70fa290 (последен пуснат) — галерия
+# b2125f3 (последен пуснат) — админ инструктори/резервации
 # 5af7837, 1103693, cd61c5c, 019037a
-git status --short   # ⇢ ГОЛЯМО количество некомитирани промени: чакащата
-                     #   работа по админ инструктори/резервации (вж. 01 §5)
+git status --short   # прегледай промените преди commit/push
 ```
-До пускането ѝ: не рестартирайте, не merge-вайте, не чистете. Всички
+Промените за преглед се качват отделно в branch-а на Аделина; production deploy-ът вече е приключил. Всички
 `.glm-*`/`.codex-*` файлове в корева са работни материали на агентите — не
 се комитват.
 
-## 4. Как се пуска код при 403 към origin
+## 4. Как се синхронизират production и GitHub
 
-1. Локално: клон → commit → проверки (13 §8).
-2. `git archive HEAD` → scp → `deploy.sh` (14 §2). Origin остава назад —
-   приемливо временно; release-ите носят своя SHA в името.
-3. Когато push-ът се възстанови (нов токен/собственик): `git push origin
-   feat/instructor-panel` и PR към `main` за преглед. Историята на release-ите
-   (тагове на VPS) е Oriención-ът за какво е било пуснато междувременно.
+1. Локално: branch `review/adelina-wheelylove` → commit → проверки (13 §8).
+2. `git archive HEAD` → scp → `deploy.sh` (14 §2) пуска отделно одобрения
+   код на VPS; release-ите носят своя SHA в името.
+3. Качи `review/adelina-wheelylove` в origin и отвори PR към `main` за преглед.
+   GitHub branch и production deploy са отделни стъпки.
 
 ## 5. Синхрон „на живо“ ↔ „локално“ ↔ „GitHub“ (препоръчителен ритуал)
 

@@ -44,7 +44,7 @@
    Настройката от страната на Google е описана в `deploy/README.md:321-339`.
 2. **Resend (резерв/локално)**: без `SMTP_HOST` → Resend API с `RESEND_API_KEY`,
    подател по подразбиране `reservations@<RESEND_EMAIL_DOMAIN>`; `EMAIL_FROM`
-   (напр. `WheelyLove <adelina@purepoint.bg>`) печели.
+   (напр. `Your Wheely <adelina@purepoint.bg>`) печели.
 - Отговорът на клиентите (`Reply-To`) винаги е пощата на студиото
   (`wheelylove@abv.bg`, константа в `email.ts:22`).
 - Обработка на грешки: автентикационните писма хвърлят (клиентът разбира,

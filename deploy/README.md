@@ -344,7 +344,7 @@ reload — той само сравнява файловете и предупр
    ```
    SMTP_HOST=smtp-relay.gmail.com
    SMTP_PORT=587
-   EMAIL_FROM=WheelyLove <adelina@purepoint.bg>
+   EMAIL_FROM=Your Wheely <adelina@purepoint.bg>
    ```
    (`SMTP_USER`/`SMTP_PASS` само ако някога се ползва app password вместо IP allowlist.)
 3. Защитната стена пуска изходящ порт 587 само от мрежата на app (`EGRESS_PORTS`, по подразбиране `80,443,587`);
